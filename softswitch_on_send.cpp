@@ -22,7 +22,7 @@ extern "C" void softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t 
     numTargets=0;
     pTargets=0;
     
-    DeviceContext *dev = P_PopRTS(ctxt);
+    DeviceContext *dev = softswitch_PopRTS(ctxt);
     if(!dev){
         return;
     }

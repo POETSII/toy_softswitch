@@ -82,12 +82,12 @@ extern "C" void softswitch_UpdateRTS(
     dev->rtsFlags=flags; 
 }
 
-extern "C" DeviceContext *P_PopRTS(PThreadContext *pCtxt)
+extern "C" DeviceContext *softswitch_PopRTS(PThreadContext *pCtxt)
 {
     return rts_pop(pCtxt);
 }
 
-extern "C" bool P_IsRTSReady(PThreadContext *pCtxt)
+extern "C" bool softswitch_IsRTSReady(PThreadContext *pCtxt)
 {
     return pCtxt->rtsHead!=0;
 }

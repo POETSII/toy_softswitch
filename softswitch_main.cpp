@@ -36,7 +36,7 @@ void softswitch_main(PThreadContext *ctxt)
         // Only want to send if either:
         // - we are currently sending message,
         // - or at least one device wants to send one
-        bool wantToSend = (currSendTodo>0) || P_IsRTSReady(ctxt);
+        bool wantToSend = (currSendTodo>0) || softswitch_IsRTSReady(ctxt);
         
         // Run idle if:
         // - There is nothing to receive

@@ -115,8 +115,8 @@ extern "C" void softswitch_UpdateRTS(
     PThreadContext *pCtxt, DeviceContext *dCtxt
 );
 
-extern "C" DeviceContext *P_PopRTS(PThreadContext *pCtxt);
+extern "C" DeviceContext *softswitch_PopRTS(PThreadContext *pCtxt);
 
-extern "C" bool P_IsRTSReady(PThreadContext *pCtxt);
+extern "C" bool softswitch_IsRTSReady(PThreadContext *pCtxt);
 
 #endif
