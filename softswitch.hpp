@@ -4,14 +4,17 @@
 #include <cstdint>
 #include <cassert>
 
+// Some kind of address. Just made this up.
 struct address_t
 {
-    uint32_t thread;
-    uint16_t device;
-    uint8_t port;
-    uint8_t flag;
+    uint32_t thread;  // hardware
+    uint16_t device;  // softare
+    uint8_t port;     // software
+    uint8_t flag;     // ?
 };
 
+// A packet. This probably mixes hardware and
+// software routing.
 struct packet_t
 {
     address_t dest;
@@ -50,16 +53,18 @@ typedef void (*compute_handler_t)(
 struct InputPortVTable
 {
     receive_handler_t receiveHandler;
-    uint16_t propertiesSize;
-    uint16_t stateSize;
+    // Note currently used, but we probably need some information
+    // about whether it has properties/state?
+    // uint16_t propertiesSize;
+    // uint16_t stateSize;
 };
 
 struct OutputPortVTable
 {
     send_handler_t sendHandler;
-    uint32_t destAddress; // Send it somewhere?
 };
 
+// Gives access to the code associated with each device
 struct DeviceTypeVTable
 {
     ready_to_send_handler_t readyToSendHandler;
@@ -70,6 +75,9 @@ struct DeviceTypeVTable
     compute_handler_t computeHandler;
 };
 
+// Gives the distribution list when sending from a particular port
+// Read-only. This is likely to be unique to each port, but it may be possible
+// to share.
 struct OutputPortTargets
 {
     unsigned numTargets;
@@ -93,14 +101,21 @@ struct DeviceContext
     DeviceContext *next;
 };
 
+/*! Contains information about what this thread is managing.
+    Some parts are read-only and can be shared (e.g. device vtables, graph properties) 
+    Other parts are read-only but probably not shared (device properties, address lists)
+    Some parts are read-write, and so must be private (e.g. the devices array, rtsHead, ...)
+*/
 struct PThreadContext
 {
     // Read-only parts
-    const void *graphProps;
-    unsigned nVTables;
-    const DeviceTypeVTable *vtables;
-    unsigned numDevices;
-    DeviceContext *devices;
+    const void *graphProps; // Application-specific graph properties (read-only)
+    
+    unsigned nVTables;      // Number of distinct device types available
+    const DeviceTypeVTable *vtables; // VTable structure for each device type (read-only, could be shared with other pthread contexts)
+  
+    unsigned numDevices;    // Number of devices this thread is managing
+    DeviceContext *devices; // Fixed-size contexs for each device (must be private to thread)
     
     // Mutable parts
     DeviceContext *rtsHead;
