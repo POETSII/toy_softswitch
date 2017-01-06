@@ -107,7 +107,7 @@ public:
         m_sendActive=true;
         m_sendAddress=address;
         m_sendSlot=index;
-        m_sendLength=
+        m_sendLength=FlitsPerMsg;
     }
 
     //////////////////////////////////////////////////
@@ -116,17 +116,38 @@ public:
     bool netTrySend(uint32_t &threadId, void *data)
     {
         lock_t lock(m_mutex);
+
+        if(m_sendActive==false)
+            return false;
+
+
     }
 
     void netTryRecv(uint32_t threadId, const void *data)
     {
         lock_t lock(m_mutex);
 
-        assert(threadId==m_myThreadId);
+        assert(threadId==m_myThreadId); // sanity check
 
         if(m_numSlotsEmpty == 0)
             return false;
 
-        for(unsigned i=0; i<
+        // Find a slot
+        unsigned start=rand()%MsgsPerThread;
+        unsigned sel;
+        for(unsigned i=0; i<MsgsPerThread; i++){
+            sel=(i+start)%MsgsPerThread;
+            if(m_slots[sel].status==HardwareEmpty)
+                break;
+        }
+
+        assert (m_slots[sel].status==HardwareEmpty);
+
+        // Copy message in
+        memcpy(m_slots[sel].data, data, WordsPerMsg*4);
+        m_slots[sel].status=HardwareFull;
+        m_numFull++;
+
+        return true;
     }
 };
