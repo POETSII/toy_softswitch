@@ -67,6 +67,9 @@ void softswitch_main(PThreadContext *ctxt)
             if(currSendTodo==0){
                 // Prepare a new packet to send
                 softswitch_onSend(ctxt, (void*)sendBuffer, currSendTodo, currSendAddressList);
+
+                // Set the length once, and it will persist
+                tinsel_mboxSetLen(
             }else{
                 // We still have more addresses to deliver the last message to
             }
