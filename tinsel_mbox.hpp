@@ -113,17 +113,24 @@ public:
     //////////////////////////////////////////////////
     // Network side
 
-    bool netTrySend(uint32_t &threadId, void *data)
+    bool netTryPullMessage(uint32_t &threadId, void *data)
     {
         lock_t lock(m_mutex);
 
         if(m_sendActive==false)
             return false;
 
+        threadId=threadId;
 
+        memcpy(m_slots[m_sendSlot].data, data, WordsPerMsg*4);
+        m_slots[sel].status=SoftwareOwned;
+        m_sendActive=false;
+        
+        return true;
+        
     }
 
-    void netTryRecv(uint32_t threadId, const void *data)
+    void netTryPushMessage(uint32_t threadId, const void *data)
     {
         lock_t lock(m_mutex);
 
