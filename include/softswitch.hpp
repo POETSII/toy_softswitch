@@ -135,7 +135,13 @@ extern "C" DeviceContext *softswitch_PopRTS(PThreadContext *pCtxt);
 
 extern "C" bool softswitch_IsRTSReady(PThreadContext *pCtxt);
 
-extern "C" PThreadContext softswitch_pthread_context;
+//! Gives the total number of threads in the application
+extern "C" unsigned softswitch_pthread_count;
+
+//! An array of softswitch_pthread_count entries
+/*! Bit of a hack, as it means every thread has a copy
+    of the whole thing. */
+extern "C" PThreadContext softswitch_pthread_contexts[];
 
 extern "C" void softswitch_main();
 

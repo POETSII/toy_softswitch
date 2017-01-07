@@ -42,8 +42,11 @@ typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} tinsel_WakeupCond;
 // Suspend thread until wakeup condition satisfied
 void tinsel_mboxWaitUntil(tinsel_WakeupCond cond);
 
-
 // Get the number of slots. Should this come from config.h?
 unsigned tinsel_mboxSlotCount();
+
+
+extern "C" void softswitch_main();
+
 
 #endif

@@ -23,7 +23,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
 
 extern "C" void softswitch_main()
 {
-    PThreadContext *ctxt=&softswitch_pthread_context;
+    PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
     
     fprintf(stderr, "softswitch: init\n");
     softswitch_init(ctxt);

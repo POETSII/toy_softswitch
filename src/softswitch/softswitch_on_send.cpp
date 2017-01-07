@@ -37,6 +37,8 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
 
     assert(dev->rtsFlags);
     unsigned portIndex=right_most_one(dev->rtsFlags);
+    
+    fprintf(stderr, "softswitch_onSend:   rtsFlags=%x, selected=%u\n", dev->rtsFlags, portIndex);    
 
     send_handler_t handler=vtable->outputPorts[portIndex].sendHandler;
 

@@ -168,6 +168,7 @@ public:
         m_sendActive=true;
         m_sendAddress=address;
         m_sendSlot=index;
+        m_slots[index].status=HardwareSend;
         
         // anyone trying to pull needs to know, and we must be going from !sendActive -> sendActive
         m_condVar.notify_all();
@@ -192,15 +193,21 @@ public:
 
     //////////////////////////////////////////////////
     // Network side
-
-    bool netTryPullMessage(uint32_t &threadId, unsigned &byteLength, void *data)
+    
+    bool netPullMessage(uint32_t &threadId, unsigned &byteLength, void *data, bool block=true)
     {
         lock_t lock(m_mutex);
-
-        if(m_sendActive==false)
-            return false;
+        
+        if(m_sendActive==false){
+            if(block){
+                m_condVar.wait(lock, [&](){ return m_sendActive; });
+            }else{
+                return false;
+            }
+        }
         
         assert(m_sendLength <= 4*WordsPerMsg);
+        assert(m_slots[m_sendSlot].status==HardwareSend);
 
         memcpy(data, m_slots[m_sendSlot].buffer, m_sendLength);
         m_slots[m_sendSlot].status=SoftwareOwned;
@@ -212,10 +219,14 @@ public:
         m_condVar.notify_all();
         
         return true;
-        
     }
 
-    bool netTryPushMessage(uint32_t dstThreadId, uint32_t byteLength, const void *data)
+    bool netTryPullMessage(uint32_t &threadId, unsigned &byteLength, void *data)
+    {
+        return netPullMessage(threadId, byteLength, data, false);
+    }
+
+    bool netPushMessage(uint32_t dstThreadId, uint32_t byteLength, const void *data, bool block=true)
     {
         lock_t lock(m_mutex);
 
@@ -223,8 +234,13 @@ public:
 
         assert(byteLength <= 4*WordsPerMsg);
         
-        if(m_numSlotsEmpty == 0)
-            return false;
+        if(m_numSlotsEmpty == 0){
+            if(block){
+                m_condVar.wait(lock, [&](){ return m_numSlotsEmpty>0; });
+            }else{
+                return false;
+            }
+        }
 
         // Find a slot
         unsigned start=rand()%MsgsPerThread;
@@ -246,6 +262,11 @@ public:
         m_condVar.notify_all();
 
         return true;
+    }
+    
+    bool netTryPushMessage(uint32_t dstThreadId, uint32_t byteLength, const void *data)
+    {
+        return netPushMessage(dstThreadId, byteLength, data, false);
     }
 };
 
