@@ -10,7 +10,6 @@ struct address_t
     uint32_t thread;  // hardware
     uint16_t device;  // softare
     uint8_t port;     // software
-    uint8_t flag;     // ?
 };
 
 // A packet. This probably mixes hardware and
@@ -19,7 +18,7 @@ struct packet_t
 {
     address_t dest;
     address_t source;
-    uint8_t payload[48];
+    uint8_t payload[];
 };
 
 typedef uint32_t (*ready_to_send_handler_t)(
@@ -41,7 +40,7 @@ typedef void (*receive_handler_t)(
     void *devState,
     const void *edgeProps,
     void *edgeState,
-    const void *
+    const void *message
 );
 
 typedef void (*compute_handler_t)(
@@ -53,6 +52,7 @@ typedef void (*compute_handler_t)(
 struct InputPortVTable
 {
     receive_handler_t receiveHandler;
+    unsigned messageSize;
     // Note currently used, but we probably need some information
     // about whether it has properties/state?
     // uint16_t propertiesSize;
@@ -62,15 +62,16 @@ struct InputPortVTable
 struct OutputPortVTable
 {
     send_handler_t sendHandler;
+    unsigned messageSize;
 };
 
 // Gives access to the code associated with each device
 struct DeviceTypeVTable
 {
     ready_to_send_handler_t readyToSendHandler;
-    unsigned numInputs;
-    OutputPortVTable *outputPorts;
     unsigned numOutputs;
+    OutputPortVTable *outputPorts;
+    unsigned numInputs;
     InputPortVTable *inputPorts;
     compute_handler_t computeHandler;
 };
@@ -133,5 +134,10 @@ extern "C" void softswitch_UpdateRTS(
 extern "C" DeviceContext *softswitch_PopRTS(PThreadContext *pCtxt);
 
 extern "C" bool softswitch_IsRTSReady(PThreadContext *pCtxt);
+
+extern "C" PThreadContext softswitch_pthread_context;
+
+extern "C" void softswitch_main();
+
 
 #endif

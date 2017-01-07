@@ -20,7 +20,7 @@ volatile void* tinsel_mboxSlot(uint32_t n);
 uint32_t tinsel_mboxCanSend();
 
 // Set message length for send operation
-// (A message of length n is comprised of n+1 flits)
+// Message length in bytes
 void tinsel_mboxSetLen(uint32_t n);
 
 // Send message at address to destination
@@ -37,9 +37,13 @@ uint32_t tinsel_mboxCanRecv();
 volatile void* tinsel_mboxRecv();
 
 // Thread can be woken by a logical-OR of these events
-typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} T_WakeupCond;
+typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} tinsel_WakeupCond;
 
 // Suspend thread until wakeup condition satisfied
-void tinsel_mboxWaitUntil(T_WakeupCond cond);
+void tinsel_mboxWaitUntil(tinsel_WakeupCond cond);
+
+
+// Get the number of slots. Should this come from config.h?
+unsigned tinsel_mboxSlotCount();
 
 #endif

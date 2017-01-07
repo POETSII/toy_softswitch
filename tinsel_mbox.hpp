@@ -1,5 +1,14 @@
+#ifndef tinsel_mbox_hpp
+#define tinsel_mbox_hpp
 
-#error "WIP"
+#include <cstdint>
+#include <cassert>
+#include <mutex>
+#include <thread>
+#include <cstring>
+#include <condition_variable>
+
+#include "tinsel_api.hpp"
 
 template<
     unsigned LogMsgsPerThread,
@@ -9,10 +18,14 @@ template<
 class TinselMbox
 {
 public:
-    const unsigned MsgsPerThread = 1<<LogMsgsPerThread;
-    const unsigned FlitsPerMsg = 1<<LogMaxFlitsPerMsg;
-    const unsigned WordsPerMsg = 1<<(LogWordsPerFlit + LogMaxFlitsPerMsg);
+    static const unsigned MsgsPerThread = 1<<LogMsgsPerThread;
+    static const unsigned FlitsPerMsg = 1<<LogMaxFlitsPerMsg;
+    static const unsigned WordsPerMsg = 1<<(LogWordsPerFlit + LogMaxFlitsPerMsg);
 private:
+    typedef std::mutex mutex_t;
+    typedef std::unique_lock<mutex_t> lock_t;
+    typedef std::condition_variable condition_variable_t;
+
     enum MsgStatus
     {
         SoftwareOwned,
@@ -20,14 +33,18 @@ private:
         HardwareEmpty,
         HardwareFull
     };
-
-    uint32_t m_myThreadId;
-
+    
     struct Slot
     {
         MsgStatus status;
-        uint32_t buffer[WordsPerMessage];
+        uint32_t buffer[WordsPerMsg];
     };
+    
+    mutable mutex_t m_mutex;
+    condition_variable_t m_condVar;
+
+    uint32_t m_myThreadId;
+    
     Slot m_slots[MsgsPerThread];
 
     unsigned m_numSlotsEmpty;
@@ -42,41 +59,68 @@ private:
     unsigned findSlot(const void *p)
     {
         for(unsigned i=0; i<MsgsPerThread; i++){
-            if(m_slots[i].data==p){
+            if(m_slots[i].buffer==p){
                 return i;
             }
         }
         assert(0);
     }
+    
 public:
+    
+    void init(uint32_t threadId)
+    {
+        m_myThreadId=threadId;
+        m_numSlotsEmpty=0;
+        m_numSlotsFull=0;
+        m_sendActive=false;
+        
+        // All slots start with software
+        for(unsigned i=0; i<MsgsPerThread; i++){
+            m_slots[i].status=SoftwareOwned;
+        }
+    }
 
     //////////////////////////////////////////
     // Tinsel side
+    
+    uint32_t getThreadId() const
+    { return m_myThreadId; }
 
-    void *mboxAlloc(unsigned n) const
+    //! Just gets the pointer, so no lock needed
+    void *mboxSlot(unsigned n) const
     {
-        return m_slots[n].buffer;
+        // Claiming this is const member returning non-const pointer,
+        // as it doesn't change state of the mailbox.
+        return (void*)m_slots[n].buffer;
     }
 
-    void mboxCanRecv() const
+    bool mboxCanRecv() const
     {
         lock_t lock(m_mutex);
-        return m_numFull>0;
+        return m_numSlotsFull>0;
     }
 
-    void *mboxRecv(unsigned n)
+    void *mboxRecv()
     {
         lock_t lock(m_mutex);
 
-        assert(mboxCanRecv());
-        for(unsigned i=0; i<MsgsPerThread; i++){
+        assert(m_numSlotsFull>0);
+        
+        unsigned i;
+        for(i=0; i<MsgsPerThread; i++){
             if(m_slots[i].status==HardwareFull){
-                m_slots[i].status=SoftwareOwned;
-                m_numFull--;
-                return m_slots[i].data;
+                break;
             }
         }
-        assert(0);
+        assert(m_slots[i].status==HardwareFull);
+        
+        m_slots[i].status=SoftwareOwned;
+        m_numSlotsFull--;
+        
+        // nobody waiting on the lock needs to be notified
+        
+        return m_slots[i].buffer;
     }
 
     void mboxAlloc(void *p)
@@ -86,7 +130,12 @@ public:
         unsigned index=findSlot(p);
         assert(m_slots[index].status==SoftwareOwned);
         m_slots[index].status=HardwareEmpty;
-        m_numEmpty++;
+        m_numSlotsEmpty++;
+        
+        if(m_numSlotsEmpty==1){
+            // Only if we go from 0 to 1 does anyone need to know 
+            m_condVar.notify_all();
+        }
     }
 
     bool mboxCanSend() const
@@ -96,46 +145,84 @@ public:
         return !m_sendActive;
     }
 
+    
+    void mboxSetLen(uint32_t byteLength)
+    {
+        lock_t lock(m_mutex);
+        
+        // need to be under lock to make sure it isn't breaking condition on
+        // changing registers while send is under way
+        
+        assert(!m_sendActive);
+        
+        m_sendLength=byteLength;
+    }
 
     void mboxSend(uint32_t address, void *p)
     {
         lock_t lock(m_mutex);
 
-        assert(mboxCanSend());
+        assert(!m_sendActive);
 
         unsigned index=findSlot(p);
         m_sendActive=true;
         m_sendAddress=address;
         m_sendSlot=index;
-        m_sendLength=FlitsPerMsg;
+        
+        // anyone trying to pull needs to know, and we must be going from !sendActive -> sendActive
+        m_condVar.notify_all();
+    }
+    
+    void mboxWaitUntil(tinsel_WakeupCond cond)
+    {
+        assert(cond); // If condition is non-empty we'll lock up
+        
+        lock_t lock(m_mutex);
+        
+        m_condVar.wait(lock, [&](){
+            if( (cond&TINSEL_CAN_SEND) && (m_sendActive==false) ){
+                return true;
+            }
+            if( (cond&TINSEL_CAN_RECV) && (m_numSlotsFull>0) ){
+                return true;
+            }
+            return false;
+        });
     }
 
     //////////////////////////////////////////////////
     // Network side
 
-    bool netTryPullMessage(uint32_t &threadId, void *data)
+    bool netTryPullMessage(uint32_t &threadId, unsigned &byteLength, void *data)
     {
         lock_t lock(m_mutex);
 
         if(m_sendActive==false)
             return false;
+        
+        assert(m_sendLength <= 4*WordsPerMsg);
 
-        threadId=threadId;
-
-        memcpy(m_slots[m_sendSlot].data, data, WordsPerMsg*4);
-        m_slots[sel].status=SoftwareOwned;
+        memcpy(data, m_slots[m_sendSlot].buffer, m_sendLength);
+        m_slots[m_sendSlot].status=SoftwareOwned;
+        threadId=m_sendAddress;
+        byteLength=m_sendLength;
         m_sendActive=false;
+
+        // Anyone in waitUntil(CAN_SEND) needs to know
+        m_condVar.notify_all();
         
         return true;
         
     }
 
-    void netTryPushMessage(uint32_t threadId, const void *data)
+    bool netTryPushMessage(uint32_t dstThreadId, uint32_t byteLength, const void *data)
     {
         lock_t lock(m_mutex);
 
-        assert(threadId==m_myThreadId); // sanity check
+        assert(dstThreadId==m_myThreadId); // sanity check
 
+        assert(byteLength <= 4*WordsPerMsg);
+        
         if(m_numSlotsEmpty == 0)
             return false;
 
@@ -151,10 +238,15 @@ public:
         assert (m_slots[sel].status==HardwareEmpty);
 
         // Copy message in
-        memcpy(m_slots[sel].data, data, WordsPerMsg*4);
+        memcpy(m_slots[sel].buffer, data, byteLength);
         m_slots[sel].status=HardwareFull;
-        m_numFull++;
+        m_numSlotsFull++;
+        
+        // Anyone in a waitUntil(CAN_RECV) needs to know
+        m_condVar.notify_all();
 
         return true;
     }
 };
+
+#endif
