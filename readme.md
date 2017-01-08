@@ -84,6 +84,34 @@ The method used here is to:
 The source list is sorted, so this is logarithmic in the number of
 inputs on an edge. This could obviously be _much_ more efficient in space and time.
 
+### RTS and RTC flags
+
+According to the application model, each device has a fixed
+number of output ports, with the number defined by the
+output type. At run-time a device instance indicates which
+ports it wants to send on by calculating a bit-mask, with
+one bit per output port. The calculation itself is done in
+the `device->vtable->readyToSend` handler (this is due to
+the suggestions from Andrey about conceptually maintaining
+all state inside the device). There is more documentation
+in the Configuration_3 mega-word-doc.
+
+The readyToSend handler is called by the softswitch after
+each send/receive/compute event, and the new flags put in
+`device->rtsFlags`. The flags will then be used to add or
+remove the device from the RTS list.
+
+When a device gets an opportunity to send, the softswitch
+will select one of the output ports based on the currently
+set `rtsFlags`. The priority hinting system in Configuration_3
+says that lower indexes have higher priority, so it looks
+for the lowest set bit.
+
+The 31-st bit (MSB) is used to indicate that the device
+wants to compute. TODO: this has drifted from the spec
+in Configuration_3, which allows the RTC index to have
+higher priority than other ports.
+
 ### RTS (Ready-to-send) list
 
 The ready-to-send list is a doubly-linked list of devices. Every device
