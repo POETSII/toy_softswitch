@@ -110,7 +110,6 @@ void halt_in_receive_handler(
     if(dState->seen == gProps->devCount){
         // Break the fourth wall
         fprintf(stderr, "\n#################################\nWoo, all devices have halted.\n#################################\n\n");
-        sleep(1);
         exit(0);
     }
 }

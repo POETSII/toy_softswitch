@@ -60,7 +60,7 @@ DeviceContext DEVICE_INSTANCE_CONTEXTS_thread0[1]={
         &dev0_state,
         0, // device index
         dev0_targets, // address lists for ports
-        dev1_sources,
+        dev0_sources,
         0, // rtsFlags
         false, // rtc
         0,  // prev

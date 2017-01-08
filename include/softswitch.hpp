@@ -136,7 +136,7 @@ struct PThreadContext
     const void *graphProps; // Application-specific graph properties (read-only)
     
     
-    unsigned nVTables;      // Number of distinct device types available
+    unsigned numVTables;      // Number of distinct device types available
     const DeviceTypeVTable *vtables; // VTable structure for each device type (read-only, could be shared with other pthread contexts)
   
     unsigned numDevices;    // Number of devices this thread is managing

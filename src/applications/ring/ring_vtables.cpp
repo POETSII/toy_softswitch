@@ -44,9 +44,10 @@ bool dev_out_send_handler(
     fprintf(stderr, "ring_dev_out:       dState=%p\n", dState);    
     fprintf(stderr, "ring_dev_out:          msg=%p\n", msg);    
 
-    
+    fprintf(stderr, "ring_dev_out:       count=%u, inc=%u\n", dState->count, gProps->increment);
     msg->count = dState->count+gProps->increment;
     dState->count=0;
+    fprintf(stderr, "\nOUT : %u\n\n", msg->count);
 
     fprintf(stderr, "ring_dev_out:     end\n");    
 
