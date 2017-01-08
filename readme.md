@@ -3,7 +3,7 @@ Overview
 
 This is a toy softswitch designed to be
 compatible with the Tinsel API underneath,
-and the application model on top. 
+and the application model on top.
 
 It appears to me to follow the Tinsel API
 (apart from message format), and supports the
@@ -84,6 +84,36 @@ The method used here is to:
 The source list is sorted, so this is logarithmic in the number of
 inputs on an edge. This could obviously be _much_ more efficient in space and time.
 
+### RTS (Ready-to-send) list
+
+The ready-to-send list is a doubly-linked list of devices. Every device
+on the list should have `rtsFlags!=0`, meaning they want to send a message.
+Any device that is not ready to send will not be on this list (nor will
+it be on any other lists).
+
+The list is managed as follows:
+
+- When the thread has an opporunity to send a message it will pop
+  the head of the RTS list, removing that device from the list.
+
+- After any compute, receive, or send event, the device `rtsFlags`
+  flags will be updated.
+
+  - If the device was previously RTS, but now is not, the device
+    will be removed from the RTS list
+
+  - If the device was not RTS, but now is, it will be added to
+    the _end_ of the RTS list.
+
+  - If the RTS status stays the same, the list is not updated.
+
+The upshot is that devices that go RTS and stay RTS should
+slowly move to the head of the list. Once they send, they
+then go to the back again. Or if a device is newly RTS, it
+will also go to the back. While the applications don't
+rely on it, this kind of fairness is likely to improve
+throughput.
+
 Tinsel simulation
 -----------------
 
@@ -121,13 +151,13 @@ There are currently two applications:
   the payload of the message, then sends the message on. The devices can be
   connected in a ring, and a single device starts with the token. This will then
   ripple round the ring getting incremented. The compute will never stop.
-  
+
 - barrier : An all-to-all barrier. Each `dev` device is connected to every other
   device, and they move forward in lock-step using all-to-all synchronisation.
   Once they have done a number of steps (configured in the graph properties), each
   device will notify a `halt` device, which quits the program once they have all
   halted.
-  
+
 - edge_props : Simple example of edge properties. All the `outer` devices send a
   pulse to an `inner` device. Each incoming edge has a bit associated with it, and
   the inner device ors them together. When all bits are received, it quits.
@@ -144,7 +174,7 @@ To build a particular instance XXX, do:
 To run the instance, do:
 
     ./thread_XXX $(mktemp -d)
-    
+
 The first argument is the directory used for the unix sockets.
 
 For example, do:
