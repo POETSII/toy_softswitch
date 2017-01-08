@@ -51,6 +51,8 @@ as well as the properties of those devices. All data-structures
 require a fixed amount of size, and could be linked in as a
 combination of read-only and read-write data-sections.
 
+### Vtables
+
 There is the concept of a "vtable", which is pretty much
 the same as a C++ vtable, but here is used to point towards
 input/output handlers and meta-data associated with them.
@@ -59,6 +61,18 @@ An overview of the vtable structure is:
 ![vtable structure](docs/vtable-structure.png)
 The entire vtable structure is read-only, and there is lots
 of potential for sharing.
+
+The device vtables are not on any kind of list, as it is not
+expected that one needs to walk them. It's the same as the vtables in
+C++ - you only need to walk the vtables if you're doing some run-time
+introspection. Each instance contains a pointer to the vtable, so
+there is no need to walk them.
+However, each vtable reachable by a device can be found through
+the `ThreadContext::numVTables` and `ThreadContext::vtables`
+array, and from there into every input and output port vtable.
+
+
+### Thread instance data
 
 Each softswitch has a root structure called a "device context", which
 is the single pointer needed for the softswitch to initialise itself
