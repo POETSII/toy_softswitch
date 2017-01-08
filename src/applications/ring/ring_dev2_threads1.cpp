@@ -18,6 +18,12 @@ address_t dev0_out_addresses[1]={
         INPUT_INDEX_dev_in
     }
 };
+InputPortSources dev0_sources[1]={
+    {
+        0,
+        0
+    }
+};
 OutputPortTargets dev0_targets[1]={
     {
         1,
@@ -35,6 +41,12 @@ address_t dev1_out_addresses[1]={
         INPUT_INDEX_dev_in
     }
 };
+InputPortSources dev1_sources[1]={
+    {
+        0,
+        0
+    }
+};
 OutputPortTargets dev1_targets[1]={
     {
         1,
@@ -49,6 +61,7 @@ DeviceContext DEVICE_INSTANCE_CONTEXTS[2]={
         &dev0_state,
         0, // device index
         dev0_targets, // address lists for ports
+        dev0_sources,
         0, // rtsFlags
         false, // rtc
         0,  // prev
@@ -60,6 +73,7 @@ DeviceContext DEVICE_INSTANCE_CONTEXTS[2]={
         &dev1_state,
         0, // device index
         dev1_targets, // address lists for ports
+        dev1_sources,
         0, // rtsFlags
         false, // rtc
         0,  // prev
@@ -76,11 +90,13 @@ unsigned softswitch_pthread_count = THREAD_COUNT;
 PThreadContext softswitch_pthread_contexts[THREAD_COUNT]=
 {
     {
+        0,
         &inst0_props,
         DEVICE_TYPE_COUNT,
         DEVICE_TYPE_VTABLES,
         DEVICE_INSTANCE_COUNT,
         DEVICE_INSTANCE_CONTEXTS,
+        0, // lamport
         0, // rtsHead
         0, // rtsTail
         0, // rtcChecked

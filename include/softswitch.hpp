@@ -18,6 +18,7 @@ struct packet_t
 {
     address_t dest;
     address_t source;
+    uint32_t lamport; // lamport clock
     uint8_t payload[];
 };
 
@@ -53,10 +54,10 @@ struct InputPortVTable
 {
     receive_handler_t receiveHandler;
     unsigned messageSize;
-    // Note currently used, but we probably need some information
-    // about whether it has properties/state?
-    // uint16_t propertiesSize;
-    // uint16_t stateSize;
+    // If both properties and state are zero, we never have to look
+    // them up...
+    uint16_t propertiesSize;
+    uint16_t stateSize;
 };
 
 struct OutputPortVTable
@@ -85,6 +86,24 @@ struct OutputPortTargets
     const address_t *targets;
 };
 
+struct InputPortBinding
+{
+    address_t source;
+    const void *edgeProperties;
+    void *edgeState;
+};
+
+// Allows us to bind incoming messages to the appropriate edge properties
+/* The properties will be stored in order of address then port. This would
+   be much better done by a hash-table or something. Or possibly embedding
+    the destination properties into the message?
+*/
+struct InputPortSources
+{
+    unsigned numSources;  // This will be null if the input has properties/state
+    const InputPortBinding *sourceBindings; // This will be null if the input had no properties or state
+};
+
 //! Context is fixed size. Points to varying size properties and state
 struct DeviceContext
 {
@@ -93,7 +112,8 @@ struct DeviceContext
     const void *properties;
     void *state;
     unsigned index;
-    OutputPortTargets *targets;
+    OutputPortTargets *targets;  // One entry per output port
+    InputPortSources *sources;   // One entry per input port
     
     uint32_t rtsFlags;
     bool rtc;
@@ -110,7 +130,11 @@ struct DeviceContext
 struct PThreadContext
 {
     // Read-only parts
+    
+    unsigned threadId;
+    
     const void *graphProps; // Application-specific graph properties (read-only)
+    
     
     unsigned nVTables;      // Number of distinct device types available
     const DeviceTypeVTable *vtables; // VTable structure for each device type (read-only, could be shared with other pthread contexts)
@@ -119,6 +143,8 @@ struct PThreadContext
     DeviceContext *devices; // Fixed-size contexs for each device (must be private to thread)
     
     // Mutable parts
+    uint32_t lamport; // clock
+    
     DeviceContext *rtsHead;
     DeviceContext *rtsTail;
     

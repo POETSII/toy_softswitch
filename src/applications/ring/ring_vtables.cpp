@@ -56,7 +56,9 @@ bool dev_out_send_handler(
 InputPortVTable INPUT_VTABLES_dev[INPUT_COUNT_dev]={
     {
         (receive_handler_t)dev_in_receive_handler,
-        sizeof(packet_t)+sizeof(token_msg)
+        sizeof(packet_t)+sizeof(token_msg),
+        0,
+        0
     }
 };
 

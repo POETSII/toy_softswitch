@@ -35,6 +35,12 @@ address_t dev0_halt_addresses[]={
         INPUT_INDEX_halt_in
     }
 };
+InputPortSources dev0_sources[]={
+    {
+        0,
+        0
+    }
+};
 OutputPortTargets dev0_targets[]={
     {
         2,
@@ -68,6 +74,12 @@ address_t dev1_halt_addresses[]={
         INPUT_INDEX_halt_in
     }
 };
+InputPortSources dev1_sources[]={
+    {
+        0,
+        0
+    }
+};
 OutputPortTargets dev1_targets[]={
     {
         2,
@@ -81,6 +93,12 @@ OutputPortTargets dev1_targets[]={
 halt_state dev2_state{
     0
 };
+InputPortSources dev2_sources[]={
+    {
+        0,
+        0
+    }
+};
 OutputPortTargets dev2_targets[]={
 };
 
@@ -91,6 +109,7 @@ DeviceContext DEVICE_INSTANCE_CONTEXTS_thread0[DEVICE_INSTANCE_COUNT_thread0]={
         &dev0_state,
         0, // device index
         dev0_targets, // address lists for ports
+        dev0_sources, // source list for inputs
         0, // rtsFlags
         false, // rtc
         0,  // prev
@@ -105,6 +124,7 @@ DeviceContext DEVICE_INSTANCE_CONTEXTS_thread1[DEVICE_INSTANCE_COUNT_thread1]={
         &dev1_state,
         0, // device index
         dev1_targets, // address lists for ports
+        dev1_sources,
         0, // rtsFlags
         false, // rtc
         0,  // prev
@@ -115,6 +135,7 @@ DeviceContext DEVICE_INSTANCE_CONTEXTS_thread1[DEVICE_INSTANCE_COUNT_thread1]={
         &dev2_state,
         1, // device index
         dev2_targets, // address lists for ports
+        dev2_sources,
         0, // rtsFlags
         false, // rtc
         0,  // prev
@@ -129,22 +150,26 @@ unsigned softswitch_pthread_count = THREAD_COUNT;
 PThreadContext softswitch_pthread_contexts[THREAD_COUNT]=
 {
     {
+        0,
         &inst0_props,
         DEVICE_TYPE_COUNT,
         DEVICE_TYPE_VTABLES,
         DEVICE_INSTANCE_COUNT_thread0,
         DEVICE_INSTANCE_CONTEXTS_thread0,
+        0, // lamport
         0, // rtsHead
         0, // rtsTail
         0, // rtcChecked
         0  // rtcOffset
     },
     {
+        1,
         &inst0_props,
         DEVICE_TYPE_COUNT,
         DEVICE_TYPE_VTABLES,
         DEVICE_INSTANCE_COUNT_thread1,
         DEVICE_INSTANCE_CONTEXTS_thread1,
+        0, // lamport
         0, // rtsHead
         0, // rtsTail
         0, // rtcChecked

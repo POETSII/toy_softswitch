@@ -38,12 +38,14 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     assert(dev->rtsFlags);
     unsigned portIndex=right_most_one(dev->rtsFlags);
     
-    fprintf(stderr, "softswitch_onSend:   rtsFlags=%x, selected=%u\n", dev->rtsFlags, portIndex);    
+    fprintf(stderr, "softswitch_onSend:   device=%08x:%04x, rtsFlags=%x, selected=%u\n", ctxt->threadId, dev->index,  dev->rtsFlags, portIndex);    
 
     send_handler_t handler=vtable->outputPorts[portIndex].sendHandler;
 
     fprintf(stderr, "softswitch_onSend:   calling application handler\n");    
 
+    ctxt->lamport++;
+    
     bool doSend=handler(
         ctxt->graphProps,
         dev->properties, 
@@ -56,6 +58,10 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     if(doSend){
         numTargets=dev->targets[portIndex].numTargets;
         pTargets=dev->targets[portIndex].targets;
+        ((packet_t*)message)->source.thread=ctxt->threadId;
+        ((packet_t*)message)->source.device=dev->index;
+        ((packet_t*)message)->source.port=portIndex;
+        ((packet_t*)message)->lamport=ctxt->lamport;
     }
     
     fprintf(stderr, "softswitch_onSend:   numTargets=%u, pTargets=%p\n", numTargets, pTargets);    

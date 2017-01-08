@@ -70,7 +70,9 @@ bool dev_halt_send_handler(
 InputPortVTable INPUT_VTABLES_dev[INPUT_COUNT_dev]={
     {
         (receive_handler_t)dev_in_receive_handler,
-        sizeof(packet_t)+sizeof(tick_msg)
+        sizeof(packet_t)+sizeof(tick_msg),
+        0,
+        0
     }
 };
 
@@ -107,7 +109,8 @@ void halt_in_receive_handler(
     
     if(dState->seen == gProps->devCount){
         // Break the fourth wall
-        fprintf(stderr, "Woo, all devices have halted.\n");
+        fprintf(stderr, "\n#################################\nWoo, all devices have halted.\n#################################\n\n");
+        sleep(1);
         exit(0);
     }
 }
@@ -115,7 +118,9 @@ void halt_in_receive_handler(
 InputPortVTable INPUT_VTABLES_halt[INPUT_COUNT_halt]={
     {
         (receive_handler_t)halt_in_receive_handler,
-        sizeof(packet_t)+sizeof(tick_msg)
+        sizeof(packet_t)+sizeof(tick_msg),
+        0,
+        0
     }
 };
 
