@@ -142,6 +142,40 @@ will also go to the back. While the applications don't
 rely on it, this kind of fairness is likely to improve
 throughput.
 
+### RTC Checking
+
+At the moment there is no explicit Ready-to-Compute list,
+as it costs time to maintain it. So unlike the RTS list
+(which is time critical), it is implicit in the rtsFlags
+of all the devices. When the thread becomes idle, the
+softswitch will spend some time looking for a device
+that wants to compute. If none of the devices wants to
+compute, then the thread will block until a send/receive
+event.
+
+The thread context has two counters used to manage
+the search for a device that wants to compute:
+
+- `rtcChecked` : How many devices has it checked since it last
+  found a device ready to compute?
+
+- `rtcOffset` : How far round the set of managed devices is it?
+
+When looking for a device, the softswitch will start at `rtcOffset`,
+then iterate through all the devices. If it finds one, the search
+will start next time at `rtcOffset+1` to give round-ish-robin
+fairness.
+
+In principle the thread might manage 1000 threads, which
+will take 3000+ instructions to check. It is likely that
+the thead might not be able to send/recv for hundreds of
+cycles, but then things clear up, so we don't want to
+be blocked till we finish looking for a compute handler.
+So the search is chunked into smaller sweeps, using the
+constant `IDLE_SWEEP_CHUNK_SIZE` `in softswitch_onRecv`.
+Eventually it will check all the chunks, and then will
+block on the next iteration.
+
 Tinsel simulation
 -----------------
 
