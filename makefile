@@ -38,4 +38,4 @@ thread_% : lib/tinsel.a lib/softswitch.a lib/%.a
 
 
 adb_poc : lib/softswitch.a src/adb/main.cpp src/adb/dummies.cpp
-	$(CXX) $(CXXFLAGS) -pthread -std=c++11 -W -Wall -o $@  $^
+	$(CXX) $(CXXFLAGS) -pthread -std=c++11 -W -Wall -o $@  $(filter %.o %.cpp,$^) $(filter %.a,$^)
