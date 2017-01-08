@@ -83,7 +83,7 @@ struct DeviceTypeVTable
 struct OutputPortTargets
 {
     unsigned numTargets;
-    const address_t *targets;
+    address_t *targets;
 };
 
 struct InputPortBinding
@@ -101,53 +101,53 @@ struct InputPortBinding
 struct InputPortSources
 {
     unsigned numSources;  // This will be null if the input has properties/state
-    const InputPortBinding *sourceBindings; // This will be null if the input had no properties or state
+    InputPortBinding *sourceBindings; // This will be null if the input had no properties or state
 };
 
 //! Context is fixed size. Points to varying size properties and state
 struct DeviceContext
 {
     // These parts are fixed, and will never change
-    const DeviceTypeVTable *vtable;
+    DeviceTypeVTable *vtable;
     const void *properties;
     void *state;
     unsigned index;
     OutputPortTargets *targets;  // One entry per output port
     InputPortSources *sources;   // One entry per input port
-    
+
     uint32_t rtsFlags;
     bool rtc;
-    
+
     DeviceContext *prev;
     DeviceContext *next;
 };
 
 /*! Contains information about what this thread is managing.
-    Some parts are read-only and can be shared (e.g. device vtables, graph properties) 
+    Some parts are read-only and can be shared (e.g. device vtables, graph properties)
     Other parts are read-only but probably not shared (device properties, address lists)
     Some parts are read-write, and so must be private (e.g. the devices array, rtsHead, ...)
 */
 struct PThreadContext
 {
     // Read-only parts
-    
+
     unsigned threadId;
-    
+
     const void *graphProps; // Application-specific graph properties (read-only)
-    
-    
+
+
     unsigned numVTables;      // Number of distinct device types available
-    const DeviceTypeVTable *vtables; // VTable structure for each device type (read-only, could be shared with other pthread contexts)
-  
+    DeviceTypeVTable *vtables; // VTable structure for each device type (read-only, could be shared with other pthread contexts)
+
     unsigned numDevices;    // Number of devices this thread is managing
     DeviceContext *devices; // Fixed-size contexs for each device (must be private to thread)
-    
+
     // Mutable parts
     uint32_t lamport; // clock
-    
+
     DeviceContext *rtsHead;
     DeviceContext *rtsTail;
-    
+
     uint32_t rtcChecked; // How many we have checked through since last seeing an RTC
                          // If rtcChecked >= numDevices, we know there is no-one who wants to compute
     uint32_t rtcOffset;  // Where we are in the checking list (to make things somewhat fair)
