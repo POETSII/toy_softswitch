@@ -10,6 +10,7 @@ struct address_t
     uint32_t thread;  // hardware
     uint16_t device;  // softare
     uint8_t port;     // software
+    uint8_t flag=0;   // software
 };
 
 // A packet. This probably mixes hardware and
