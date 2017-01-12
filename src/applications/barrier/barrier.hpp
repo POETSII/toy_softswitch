@@ -53,6 +53,7 @@ struct dev_state
     uint32_t t;
     uint32_t seenNow;
     uint32_t seenNext;
+    bool halted;
 };
 
 // No properties
