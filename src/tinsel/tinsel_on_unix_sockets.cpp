@@ -6,12 +6,7 @@ const unsigned LogMaxFlitsPerMsg = 4;
     
 typedef TinselMbox<LogMsgsPerThread,LogWordsPerFlit,LogMaxFlitsPerMsg> mbox_t;
 
-/* I'm missing something here. I want this to be "thread_local", and
-   spin up std::threads, but if I do that I always get an operation
-   not permitted exception when the outgoing thread tries to lock the
-   mutex.
-*/
-static mbox_t *mbox = 0;
+static thread_local mbox_t *mbox = 0;
 
 #include <sys/types.h> 
 #include <sys/socket.h>
@@ -70,6 +65,10 @@ void mbox_thread(const char *socketDir, uint32_t threadId)
     puts(addrTemplate);
     
     mbox=new mbox_t();
+    
+    // Take local copy so that our worker threads don't
+    // end up on a different variable.
+    mbox_t *mboxLocal=mbox;
     
     mbox->init(threadId);
         
@@ -136,7 +135,7 @@ void mbox_thread(const char *socketDir, uint32_t threadId)
                 uint32_t dstThreadId=((packet_t*)buffer)->dest.thread;
 
                 fprintf(stderr, "Thread/0x%08x/in : delivering message of length %u from thread 0x%08x to thread 0x%08x\n", threadId, len, srcThreadId, dstThreadId);                 
-                mbox->netPushMessage(dstThreadId, len, buffer);
+                mboxLocal->netPushMessage(dstThreadId, len, buffer);
             }           
         }catch(std::exception &e){
             fprintf(stderr, "Thread/0x%08x/in : Exception : %s\n", threadId, e.what());
@@ -160,7 +159,7 @@ void mbox_thread(const char *socketDir, uint32_t threadId)
                 uint32_t byteLength;
                 
                 fprintf(stderr, "Thread/0x%08x/out : Waiting to pull message from mailbox\n", threadId);     
-                mbox->netPullMessage(dstThreadId, byteLength, buffer);
+                mboxLocal->netPullMessage(dstThreadId, byteLength, buffer);
                 
                 assert(byteLength <= 4*mbox_t::WordsPerMsg);
                 
@@ -214,7 +213,7 @@ int main(int argc, const char *argv[])
         uint32_t threadId=-1;
         
         // See note by `mbox` global variable. I'd prefer to use threads.
-        bool useThreads=false;
+        bool useThreads=true;
         
         if(softswitch_pthread_count==1){
             mbox_thread(socketDir, 0);
