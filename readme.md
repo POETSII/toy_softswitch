@@ -200,17 +200,28 @@ simulation threads:
 - incoming : trys to read messages from the network, then pushes them into the mailbox
 - outgoing : trys to pull messages from the mailbox, then sends them over the network.
 
-Communication is performed using Unix data-gram sockets. Each hardware thread gets
-a socket in a chosen directory. If the directory is `base`, then each thread opens
-the socket `sprintf("base/%08xl,threadId)`. The directory `base` is not cleaned
-before use, so if you run the program twice, it may fail to open the sockets
-again and you'll get an error.
 
 Each hardware thread runs in its own process, as this appears to be the
 only way to get `tinsel_*` functions which have an implicit thread id.
 (Using `thread_local` was causing things to fail). On startup the process
 will fork as many times as are needed in order to satisfy `softswitch_pthread_count`.
 Each thread will then use the thread context `softswitch_pthread_context[threadId]`.
+
+
+There are two communication backends:
+
+*** Unix domain datagram sockets
+
+Communication is performed using Unix data-gram sockets. Each hardware thread gets
+a socket in a chosen directory. If the directory is `base`, then each thread opens
+the socket `sprintf("base/%08xl,threadId)`. The directory `base` is not cleaned
+before use, so if you run the program twice, it may fail to open the sockets
+again and you'll get an error.
+
+*** MPI
+
+Each rank in the MPI world is a thread. It is up to the user to launch a big
+enough world that there is at least one rank per thread.
 
 Applications
 ------------
@@ -245,18 +256,55 @@ The vtable and instance information is linked as data into the program.
 
 To build a particular instance XXX, do:
 
-    make thread_XXX
+    make run_YYY_XXX
+    
+where:
 
-To run the instance, do:
+    - YYY = "unix" or "mpi"
+    
+    - XXX is the name of an application instance
+    
+       - `barrier_dev3_threads2`
+       
+       - `barrier_dev5_threads3`    
+       
+       - `edge_props_dev4_threads1`
+       
+       - `ring_dev2_threads2`
+       
+       - `ring_dev2_threads2`
 
-    ./thread_XXX $(mktemp -d)
+       - `ring_dev4_threads2`
 
-The first argument is the directory used for the unix sockets.
+To run the instance, you'll need to choose based on the communication
+method.
 
-For example, do:
+- Unix:
 
-    make thread_barrier_dev3_threads2 -B
-    ./thread_barrier_dev3_threads2 $(mktemp -d)
+      ./run_XXX_YYY $(mktemp -d)
 
-to run barrier with 4 threads (two `dev` + one `halt`), split across two
-POETS (and unix) threads.
+  The first argument is the directory used for the unix sockets.
+
+  For example, do:
+
+      make run_unix_barrier_dev3_threads2 -B
+      ./run_unix_barrier_dev3_threads2 $(mktemp -d)
+
+  to run barrier with 3 devices (two `dev` + one `halt`), split across two
+  POETS (and unix) threads.
+  
+- MPI:
+
+    mpirun -n N ./run_XXX_YYY
+    
+  You need to choose N (number of MPI threads) to be at least as many as
+  the number of application threads.
+  
+  For example, do:
+
+      make run_mpi_barrier_dev3_threads2 -B
+      mpirun -n 2 $(realpath run_mpi_barrier_dev3_threads2)
+
+  to run barrier with 3 devices (two `dev` + one `halt`), split across four
+  MPI threads (some of which will go idle).
+  
