@@ -35,10 +35,11 @@ dev_state dev1_state{
     0
 };
 address_t dev1_out_addresses[1]={
-    {
+    address_t{
         0, // thread 0
         0, // device index 0
-        INPUT_INDEX_dev_in
+        INPUT_INDEX_dev_in,
+        0 // flag
     }
 };
 InputPortSources dev1_sources[1]={

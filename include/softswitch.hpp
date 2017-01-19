@@ -7,10 +7,21 @@
 // Some kind of address. Just made this up.
 struct address_t
 {
-    uint32_t thread;  // hardware
-    uint16_t device;  // softare
-    uint8_t port;     // software
-    uint8_t flag=0;   // software
+    // Working round bug in gcc before gcc5.
+    // Previously default aggregate init was used, but that doesn't allow
+    // default init of _flag to 0.
+    // Added constructor to get the init.
+    address_t(uint32_t _thread, uint16_t _device, uint8_t _port, uint8_t _flag=0)
+        : thread(_thread)
+        , device(_device)
+        , port(_port)
+        , flag(_flag)
+    {}
+    
+    uint32_t thread;    // hardware
+    uint16_t device;    // softare
+    uint8_t port;       // software
+    uint8_t flag; //=0; // software
 };
 
 // A packet. This probably mixes hardware and

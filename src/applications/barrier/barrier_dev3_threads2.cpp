@@ -15,7 +15,8 @@ graph_props inst0_props{
 dev_state dev0_state{
     0,
     DEVICE_INSTANCE_COUNT-1,
-    0
+    0,
+    false
 };
 address_t dev0_out_addresses[]={
     {
@@ -54,7 +55,8 @@ OutputPortTargets dev0_targets[]={
 dev_state dev1_state{
     0,
     DEVICE_INSTANCE_COUNT-1,
-    0
+    0,
+    false
 };
 address_t dev1_out_addresses[]={
     {

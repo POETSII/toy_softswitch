@@ -15,7 +15,7 @@ uint32_t dev_ready_to_send_handler(
     return
         ((stillGoing && currentFull) ? OUTPUT_FLAG_dev_out : 0)
         |
-        ((!stillGoing) ? OUTPUT_FLAG_halt_out : 0);    
+        ((!stillGoing) && !dState->halted ? OUTPUT_FLAG_halt_out : 0);    
 }
 
 void dev_in_receive_handler(
@@ -64,6 +64,7 @@ bool dev_halt_send_handler(
     dev_state *dState,
     done_msg *msg
 ){
+    dState->halted=true;
     return true;
 }
 
@@ -105,12 +106,16 @@ void halt_in_receive_handler(
     void *eState,
     done_msg *msg
 ){
+    fprintf(stderr, "halt_in: state={%u}, gProps={%u}\n", dState->seen, gProps->devCount);
+
+    
     dState->seen++;
     
     if(dState->seen == gProps->devCount){
+
         // Break the fourth wall
         fprintf(stderr, "\n#################################\nWoo, all devices have halted.\n#################################\n\n");
-        exit(0);
+        //exit(0);
     }
 }
 

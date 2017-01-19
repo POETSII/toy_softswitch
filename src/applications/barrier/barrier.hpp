@@ -22,7 +22,6 @@ const unsigned OUTPUT_FLAG_dev_out = 1<<OUTPUT_INDEX_dev_out;
 const unsigned OUTPUT_INDEX_halt_out = 1;
 const unsigned OUTPUT_FLAG_halt_out = 1<<OUTPUT_INDEX_halt_out;
 
-
 const unsigned INPUT_COUNT_halt = 1;
 const unsigned INPUT_INDEX_halt_in = 0;
 
@@ -54,6 +53,7 @@ struct dev_state
     uint32_t t;
     uint32_t seenNow;
     uint32_t seenNext;
+    bool halted;
 };
 
 // No properties
