@@ -26,7 +26,7 @@ void dev_in_receive_handler(
     void *eState,
     tick_msg *msg
 ){
-    fprintf(stderr, "dev_in: state={%u,%u,%u}, msg={%u}\n", dState->t, dState->seenNow, dState->seenNext, msg->t);
+    softswitch_handler_log(2, "dev_in: state={%u,%u,%u}, msg={%u}\n", dState->t, dState->seenNow, dState->seenNext, msg->t);
     
     if(msg->t == dState->t){
         dState->seenNow++;
@@ -43,7 +43,7 @@ bool dev_out_send_handler(
     dev_state *dState,
     tick_msg *msg
 ){
-    fprintf(stderr, "dev_out: state={%u,%u,%u}\n", dState->t, dState->seenNow, dState->seenNext);    
+    softswitch_handler_log(2, "dev_out: state={%u,%u,%u}\n", dState->t, dState->seenNow, dState->seenNext);    
     
     assert(dState->t < gProps->maxTime);
     assert(dState->seenNow == gProps->devCount);
@@ -73,17 +73,20 @@ InputPortVTable INPUT_VTABLES_dev[INPUT_COUNT_dev]={
         (receive_handler_t)dev_in_receive_handler,
         sizeof(packet_t)+sizeof(tick_msg),
         0,
-        0
+        0,
+        "dev_in"
     }
 };
 
 OutputPortVTable OUTPUT_VTABLES_dev[OUTPUT_COUNT_dev]={
     {
         (send_handler_t)dev_out_send_handler,
-        sizeof(packet_t)+sizeof(tick_msg)
+        sizeof(packet_t)+sizeof(tick_msg),
+        "tick"
     },{
         (send_handler_t)dev_halt_send_handler,
-        sizeof(packet_t)+sizeof(done_msg)
+        sizeof(packet_t)+sizeof(done_msg),
+        "halt"
     }
 };
 
@@ -106,7 +109,7 @@ void halt_in_receive_handler(
     void *eState,
     done_msg *msg
 ){
-    fprintf(stderr, "halt_in: state={%u}, gProps={%u}\n", dState->seen, gProps->devCount);
+    softswitch_handler_log(2, "state={%u}, gProps={%u}\n", dState->seen, gProps->devCount);
 
     
     dState->seen++;
@@ -114,7 +117,7 @@ void halt_in_receive_handler(
     if(dState->seen == gProps->devCount){
 
         // Break the fourth wall
-        fprintf(stderr, "\n#################################\nWoo, all devices have halted.\n#################################\n\n");
+        softswitch_handler_log(1, "\n#################################\nWoo, all devices have halted.\n#################################\n\n");
         //exit(0);
     }
 }
@@ -124,7 +127,8 @@ InputPortVTable INPUT_VTABLES_halt[INPUT_COUNT_halt]={
         (receive_handler_t)halt_in_receive_handler,
         sizeof(packet_t)+sizeof(tick_msg),
         0,
-        0
+        0,
+        "halt_in"
     }
 };
 
@@ -147,13 +151,15 @@ DeviceTypeVTable DEVICE_TYPE_VTABLES[DEVICE_TYPE_COUNT] = {
         OUTPUT_VTABLES_dev,
         INPUT_COUNT_dev,
         INPUT_VTABLES_dev,
-        (compute_handler_t)0 // No compute handler
+        (compute_handler_t)0, // No compute handler
+        "dev"
     },{
         (ready_to_send_handler_t)halt_ready_to_send_handler,
         OUTPUT_COUNT_halt,
         OUTPUT_VTABLES_halt,
         INPUT_COUNT_halt,
         INPUT_VTABLES_halt,
-        (compute_handler_t)0 // No compute handler
+        (compute_handler_t)0, // No compute handler
+        "halt"
     }
 };

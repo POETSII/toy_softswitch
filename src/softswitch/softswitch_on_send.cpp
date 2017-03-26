@@ -46,12 +46,20 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
 
     ctxt->lamport++;
     
+    // Needed for handler logging
+    ctxt->currentDevice=dev->index;
+    ctxt->currentHandlerType=2;
+    ctxt->currentPort=portIndex;
+
     bool doSend=handler(
         ctxt->graphProps,
         dev->properties, 
         dev->state,
         ((packet_t*)message)->payload
     );
+
+    ctxt->currentHandlerType=0;
+    
     fprintf(stderr, "softswitch_onSend:   application handler done, doSend=%d\n", doSend?1:0);    
 
     

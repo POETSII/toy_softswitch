@@ -38,6 +38,23 @@ lib/edge_props_dev4_threads1.a : $(patsubst %.cpp,%.o,src/applications/edge_prop
 	ar rcs $@ $^
 
 
+define generated_app_template
+
+lib/$1.a : $(patsubst %.cpp,%.o,$(wildcard generated/apps/$1/*.cpp))
+	echo "Gen: $$^"
+	mkdir -p lib
+	ar rcs $$@ $$^
+
+all_generated_apps : lib/$1.a
+
+endef
+
+
+GENERATED_APPS := $(patsubst generated/apps/%,%,$(wildcard generated/apps/*))
+
+$(foreach ga,$(GENERATED_APPS),$(eval $(call generated_app_template,$(ga))))
+
+
 run_unix_% : lib/tinsel_unix.a lib/softswitch.a lib/%.a
 	$(CXX) -pthread -std=c++11 -W -Wall -o $@  $^
 

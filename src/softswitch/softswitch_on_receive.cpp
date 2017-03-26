@@ -59,6 +59,12 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
             
     // Call the application level handler
     fprintf(stderr, "softswitch_onReceive:   begin application handler, packet=%p, payload=%p\n", packet, packet->payload);
+    
+    // Needed for handler logging
+    ctxt->currentDevice=deviceIndex;
+    ctxt->currentHandlerType=1;
+    ctxt->currentPort=portIndex;
+
     handler(
         ctxt->graphProps,
         dev->properties,
@@ -67,6 +73,9 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
         eState,     
         packet->payload
     );
+
+    ctxt->currentHandlerType=0;
+
     fprintf(stderr, "softswitch_onReceive:   end application handler\n");
 
     fprintf(stderr, "softswitch_onReceive:   updating RTS\n");

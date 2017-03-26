@@ -70,12 +70,14 @@ struct InputPortVTable
     // them up...
     uint16_t propertiesSize;
     uint16_t stateSize;
+    const char *name;
 };
 
 struct OutputPortVTable
 {
     send_handler_t sendHandler;
     unsigned messageSize;
+    const char *name;
 };
 
 // Gives access to the code associated with each device
@@ -87,6 +89,7 @@ struct DeviceTypeVTable
     unsigned numInputs;
     InputPortVTable *inputPorts;
     compute_handler_t computeHandler;
+    const char *id; // Unique id of the device type
 };
 
 // Gives the distribution list when sending from a particular port
@@ -126,6 +129,7 @@ struct DeviceContext
     unsigned index;
     OutputPortTargets *targets;  // One entry per output port
     InputPortSources *sources;   // One entry per input port
+    const char *id;              // unique id of the device
 
     uint32_t rtsFlags;
     bool rtc;
@@ -163,6 +167,13 @@ struct PThreadContext
     uint32_t rtcChecked; // How many we have checked through since last seeing an RTC
                          // If rtcChecked >= numDevices, we know there is no-one who wants to compute
     uint32_t rtcOffset;  // Where we are in the checking list (to make things somewhat fair)
+
+    int logLevel;        // Controls how much output is printed
+
+    // This is used by the softswitch to track which device (if any) is active, so that we know during things like handler_log
+    uint32_t currentDevice; 
+    int currentHandlerType;   // 0 = None, 1 = Recv, 2 = Send
+    uint32_t currentPort; // Index of the port (for recv and send)
 };
 
 extern "C" void softswitch_UpdateRTS(
@@ -172,6 +183,10 @@ extern "C" void softswitch_UpdateRTS(
 extern "C" DeviceContext *softswitch_PopRTS(PThreadContext *pCtxt);
 
 extern "C" bool softswitch_IsRTSReady(PThreadContext *pCtxt);
+
+//! Allows logging from within a device handler
+extern "C" void softswitch_handler_log(int level, const char *msg, ...);
+
 
 //! Gives the total number of threads in the application
 extern "C" unsigned softswitch_pthread_count;

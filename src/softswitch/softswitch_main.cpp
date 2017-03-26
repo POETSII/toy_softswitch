@@ -3,6 +3,7 @@
 #include "softswitch.hpp"
 
 #include <cstdio>
+#include <cstdarg>
 
 //! Initialise data-structures (e.g. RTS)
 extern "C" void softswitch_init(PThreadContext *ctxt);
@@ -20,10 +21,100 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message);
 */
 extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets);
 
+static PThreadContext *softswitch_getContext()
+{
+    return softswitch_pthread_contexts + tinsel_myId();
+}
+
+static void append_vprintf(int &left, char *&dst, const char *msg, va_list v)
+{
+    int done=vsnprintf(dst, left, msg, v);
+    
+    if(done>0){
+        assert(done<=left);
+        left-=done;
+        dst+=done;
+    }
+}
+
+static void append_printf(int &left, char *&dst, const char *msg, ...)
+{
+    va_list v;
+    va_start(v,msg);
+    append_vprintf(left, dst, msg, v);
+    va_end(v);
+}
+
+
+void softswitch_softswitch_log(int level, const char *msg, ...)
+{
+    PThreadContext *ctxt=softswitch_getContext();
+    assert(ctxt->currentHandlerType==0); // can't call handler log when not in a handler
+    
+    if(level > ctxt->softLogLevel)
+        return;
+
+    char buffer[200]={};
+    int left=sizeof(buffer)-1;
+    char *dst=buffer;
+
+    append_printf(left, dst, "[%08x] SOFT / device %s", tinsel_myId(), ctxt->currentDevice);
+    
+
+    if(ctxt->currentHandlerType==1){
+        auto port=ctxt->vtables[ctxt->currentDevice].inputPorts[ctxt->currentDevice].name;
+        append_printf(left, dst, " / recv / %s", port);
+    }else if(ctxt->currentHandlerType==2){
+        auto port=ctxt->vtables[ctxt->currentDevice].outputPorts[ctxt->currentDevice].name;
+        append_printf(left, dst, " / send / %s", port);
+    }
+
+    va_list v;
+    va_start(v,msg);
+    append_vprintf(left, dst, msg, v);
+    va_end(v);
+
+    tinsel_puts(buffer);
+}
+
+
+void softswitch_handler_log(int level, const char *msg, ...)
+{
+    PThreadContext *ctxt=softswitch_getContext();
+    assert(ctxt->currentHandlerType!=0); // can't call handler log when not in a handler
+    assert(ctxt->currentDevice < ctxt->numDevices); // Current device must be in range
+
+    if(level > ctxt->logLevel)
+        return;
+
+    char buffer[200]={};
+    int left=sizeof(buffer)-1;
+    char *dst=buffer;
+
+    append_printf(left, dst, "[%08x] APPL / device %u", tinsel_myId(), ctxt->currentDevice);
+    
+
+    if(ctxt->currentHandlerType==1){
+        auto port=ctxt->vtables[ctxt->currentDevice].inputPorts[ctxt->currentDevice].name;
+        append_printf(left, dst, " / recv / %s", port);
+    }else if(ctxt->currentHandlerType==2){
+        auto port=ctxt->vtables[ctxt->currentDevice].outputPorts[ctxt->currentDevice].name;
+        append_printf(left, dst, " / send / %s", port);
+    }
+
+    va_list v;
+    va_start(v,msg);
+    append_vprintf(left, dst, msg, v);
+    va_end(v);
+
+    tinsel_puts(buffer);
+}
 
 extern "C" void softswitch_main()
 {
-    PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+    PThreadContext *ctxt=softswitch_getContext();
+
+    ctxt->logLevel=3;
     
     fprintf(stderr, "softswitch: init\n");
     softswitch_init(ctxt);

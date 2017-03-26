@@ -56,6 +56,8 @@ unsigned tinsel_mboxSlotCount()
 { return mbox_t::MsgsPerThread; }
 
 
+
+
 void mbox_thread(uint32_t threadId)
 {
     mbox=new mbox_t();
@@ -147,8 +149,6 @@ void mbox_thread(uint32_t threadId)
     outgoing.join();
 
 }
-
-
 
 
 int main(int argc, char *argv[])

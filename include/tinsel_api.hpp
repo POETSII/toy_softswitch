@@ -45,6 +45,8 @@ void tinsel_mboxWaitUntil(tinsel_WakeupCond cond);
 // Get the number of slots. Should this come from config.h?
 unsigned tinsel_mboxSlotCount();
 
+// Print a string back via debugging channel (i.e. hostlink)
+void tinsel_puts(const char *msg);
 
 extern "C" void softswitch_main();
 

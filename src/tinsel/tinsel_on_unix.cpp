@@ -13,6 +13,7 @@ static thread_local mbox_t *mbox = 0;
 #include <sys/un.h>
 #include <unistd.h>
 #include <vector>
+#include <cstdarg>
 
 #include "softswitch.hpp"
 
@@ -56,6 +57,11 @@ void tinsel_mboxWaitUntil(tinsel_WakeupCond cond)
 
 unsigned tinsel_mboxSlotCount()
 { return mbox_t::MsgsPerThread; }
+
+void tinsel_puts(const char *msg)
+{
+    fputs(msg, stderr);
+}
 
 
 void mbox_thread(const char *socketDir, uint32_t threadId)
