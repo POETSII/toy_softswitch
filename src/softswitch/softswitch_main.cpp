@@ -46,66 +46,63 @@ static void append_printf(int &left, char *&dst, const char *msg, ...)
 }
 
 
-void softswitch_softswitch_log(int level, const char *msg, ...)
+extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
 {
     PThreadContext *ctxt=softswitch_getContext();
-    assert(ctxt->currentHandlerType==0); // can't call handler log when not in a handler
     
     if(level > ctxt->softLogLevel)
         return;
-
+    
     char buffer[200]={};
-    int left=sizeof(buffer)-1;
+    int left=sizeof(buffer)-3;
     char *dst=buffer;
 
-    append_printf(left, dst, "[%08x] SOFT / device %s", tinsel_myId(), ctxt->currentDevice);
+    append_printf(left, dst, "[%08x] SOFT : ", tinsel_myId());
     
-
-    if(ctxt->currentHandlerType==1){
-        auto port=ctxt->vtables[ctxt->currentDevice].inputPorts[ctxt->currentDevice].name;
-        append_printf(left, dst, " / recv / %s", port);
-    }else if(ctxt->currentHandlerType==2){
-        auto port=ctxt->vtables[ctxt->currentDevice].outputPorts[ctxt->currentDevice].name;
-        append_printf(left, dst, " / send / %s", port);
-    }
-
     va_list v;
     va_start(v,msg);
     append_vprintf(left, dst, msg, v);
     va_end(v);
+    
+    append_printf(left, dst, "\n");
 
     tinsel_puts(buffer);
 }
 
 
-void softswitch_handler_log(int level, const char *msg, ...)
+extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
 {
     PThreadContext *ctxt=softswitch_getContext();
     assert(ctxt->currentHandlerType!=0); // can't call handler log when not in a handler
     assert(ctxt->currentDevice < ctxt->numDevices); // Current device must be in range
 
-    if(level > ctxt->logLevel)
+    if(level > ctxt->applLogLevel)
         return;
 
     char buffer[200]={};
-    int left=sizeof(buffer)-1;
+    int left=sizeof(buffer)-3;
     char *dst=buffer;
-
-    append_printf(left, dst, "[%08x] APPL / device %u", tinsel_myId(), ctxt->currentDevice);
     
+    const DeviceContext *deviceContext = ctxt->devices+ctxt->currentDevice;
+    
+    append_printf(left, dst, "[%08x] APPL / device (%u)=%s", tinsel_myId(), ctxt->currentDevice, deviceContext->id); 
 
     if(ctxt->currentHandlerType==1){
-        auto port=ctxt->vtables[ctxt->currentDevice].inputPorts[ctxt->currentDevice].name;
-        append_printf(left, dst, " / recv / %s", port);
+        auto port=deviceContext->vtable->inputPorts[ctxt->currentPort].name;
+        append_printf(left, dst, " / recv / %s : ", port);
     }else if(ctxt->currentHandlerType==2){
-        auto port=ctxt->vtables[ctxt->currentDevice].outputPorts[ctxt->currentDevice].name;
-        append_printf(left, dst, " / send / %s", port);
+        auto port=deviceContext->vtable->outputPorts[ctxt->currentPort].name;
+        append_printf(left, dst, " / send / %s : ", port);
+    }else if(ctxt->currentHandlerType==3){
+        append_printf(left, dst, " / comp / compute : ");
     }
 
     va_list v;
     va_start(v,msg);
     append_vprintf(left, dst, msg, v);
     va_end(v);
+    
+    append_printf(left, dst, "\n");
 
     tinsel_puts(buffer);
 }
@@ -113,11 +110,10 @@ void softswitch_handler_log(int level, const char *msg, ...)
 extern "C" void softswitch_main()
 {
     PThreadContext *ctxt=softswitch_getContext();
-
-    ctxt->logLevel=3;
     
-    fprintf(stderr, "softswitch: init\n");
+    softswitch_softswitch_log(1, "softswitch_main()");
     softswitch_init(ctxt);
+    
     
     
     // We'll hold onto this one
@@ -130,21 +126,21 @@ extern "C" void softswitch_main()
 
     // Assumption: all buffers are owned by software, so we have to give them to mailbox
     // We only keep hold of slot 0
-    fprintf(stderr, "softswitch: giving receive buffers to mailbox\n");
+    softswitch_softswitch_log(2, "Giving %d-1 receive buffers to mailbox", tinsel_mboxSlotCount());
     for(unsigned i=1; i<tinsel_mboxSlotCount(); i++){
         tinsel_mboxAlloc( tinsel_mboxSlot(i) );
     }
 
-    fprintf(stderr, "softswitch: starting loop\n");
+    softswitch_softswitch_log(1, "starting loop");
     
     while(1) {
-        fprintf(stderr, "softswitch: loop top\n");
+        softswitch_softswitch_log(2, "Loop top");
         
         // Only want to send if either:
         // - we are currently sending message,
         // - or at least one device wants to send one
         bool wantToSend = (currSendTodo>0) || softswitch_IsRTSReady(ctxt);
-        fprintf(stderr, "softswitch:  wantToSend=%d\n", wantToSend?1:0);
+        softswitch_softswitch_log(3, "wantToSend=%d", wantToSend?1:0);
 
 
         // Run idle if:
@@ -155,25 +151,24 @@ extern "C" void softswitch_main()
                 break;
         }
 
-        uint32_t wakeupFlags = wantToSend ? (TINSEL_CAN_RECV|TINSEL_CAN_SEND) : TINSEL_CAN_RECV;
-        fprintf(stderr, "softswitch: waiting for send=%d, recv=%d\n", wakeupFlags&TINSEL_CAN_SEND, (wakeupFlags&TINSEL_CAN_RECV)?1:0);
+        uint32_t wakeupFlags = wantToSend ? (tinsel_CAN_RECV|tinsel_CAN_SEND) : tinsel_CAN_RECV;
+        softswitch_softswitch_log(3, "waiting for send=%d, recv=%d", wakeupFlags&tinsel_CAN_SEND, (wakeupFlags&tinsel_CAN_RECV)?1:0);
         tinsel_mboxWaitUntil( (tinsel_WakeupCond) wakeupFlags );
 
         if(tinsel_mboxCanRecv()){
-            fprintf(stderr, "softswitch:   receive branch\n");
+            softswitch_softswitch_log(2, "receive branch");
 
             /*! We always receive messages, even while a send is in progress (currSendTodo > 0) */
 
-            fprintf(stderr, "softswitch:   calling mboxRecv\n");
+            softswitch_softswitch_log(4, "calling mboxRecv");
             auto recvBuffer=tinsel_mboxRecv();     // Take the buffer from receive pool
 
-            fprintf(stderr, "softswitch:   calling onRecieve, recvBuffer=%p\n", recvBuffer);
             softswitch_onReceive(ctxt, (const void *)recvBuffer);  // Decode and dispatch
 
-            fprintf(stderr, "softswitch:   giving buffer back\n");
+            softswitch_softswitch_log(4, "giving buffer back");
             tinsel_mboxAlloc(recvBuffer); // Put it back in receive pool
         }else{
-            fprintf(stderr, "softswitch:   send branch\n");
+            softswitch_softswitch_log(2, "send branch");
 
             assert(wantToSend); // Only come here if we have something to do
             assert(tinsel_mboxCanSend()); // Only reason we could have got here
@@ -182,16 +177,16 @@ extern "C" void softswitch_main()
                addresses, or we get the chance to send a new message. */
 
             if(currSendTodo==0){
-                fprintf(stderr, "softswitch:   preparing new message\n");
+                softswitch_softswitch_log(3, "preparing new message");
 
                 // Prepare a new packet to send
                 currSize=softswitch_onSend(ctxt, (void*)sendBuffer, currSendTodo, currSendAddressList);
             }else{
                 // We still have more addresses to deliver the last message to
-                fprintf(stderr, "softswitch:   forwarding current message\n");
+                softswitch_softswitch_log(3, "forwarding current message");
             }
 
-            fprintf(stderr, "softswitch:   sending to thread %08x, device %u, port %u\n", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->port);
+            softswitch_softswitch_log(3, "sending to thread %08x, device %u, port %u", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->port);
             
             // Update the target address (including the device and pin)
             ((packet_t*)sendBuffer)->dest = *currSendAddressList;
@@ -199,9 +194,9 @@ extern "C" void softswitch_main()
             // Send to the relevant thread
             // TODO: Shouldn't there be something like mboxForward as part of
             // the API, which only takes the address?
-            fprintf(stderr, "softswitch:   setting length\n");
+            softswitch_softswitch_log(4, "setting length");
             tinsel_mboxSetLen(currSize);
-            fprintf(stderr, "softswitch:   doing send\n");
+            softswitch_softswitch_log(4, "doing send");
             tinsel_mboxSend(currSendAddressList->thread, sendBuffer);
 
             // Move onto next address for next time
@@ -209,6 +204,6 @@ extern "C" void softswitch_main()
             currSendAddressList++;
         }
         
-        fprintf(stderr, "softswitch: loop bottom\n");
+        softswitch_softswitch_log(3, "loop bottom");
     }
 }

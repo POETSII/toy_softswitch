@@ -11,6 +11,7 @@ static mbox_t *mbox = 0;
 #include <mpi/mpi.h>
 
 #include <vector>
+#include <sstream>
 
 #include "softswitch.hpp"
 
@@ -56,9 +57,14 @@ unsigned tinsel_mboxSlotCount()
 { return mbox_t::MsgsPerThread; }
 
 
+void tinsel_puts(const char *msg)
+{
+    fputs(msg, stderr);
+}
 
 
-void mbox_thread(uint32_t threadId)
+
+void mbox_thread(uint32_t threadId, int hardLogLevel)
 {
     mbox=new mbox_t();
     
@@ -75,7 +81,9 @@ void mbox_thread(uint32_t threadId)
  
     std::thread incoming([&](){
         try{        
-            fprintf(stderr, "Thread/0x%08x/in : Starting incoming thread\n", threadId);     
+            if(hardLogLevel >= 1){
+                fprintf(stderr, "[%08x] HARD / in : Starting thread\n", threadId);     
+            }
             
             unsigned bufferLen=mbox_t::WordsPerMsg*4;
             void *buffer=malloc(bufferLen);
@@ -92,7 +100,9 @@ void mbox_thread(uint32_t threadId)
                     throw std::runtime_error("MPI_Get_count");
                 }
                 
-                fprintf(stderr, "Thread/0x%08x/in : Received message of length %u from rank '%u'\n", threadId, len, status.MPI_SOURCE);     
+                if(hardLogLevel >= 2){
+                    fprintf(stderr, "[%08x] HARD / in : Received message of length %u from rank '%u'\n", threadId, len, status.MPI_SOURCE);     
+                }
                 
                 uint32_t srcThreadId;
                 srcThreadId=((packet_t*)buffer)->source.thread;
@@ -100,11 +110,13 @@ void mbox_thread(uint32_t threadId)
                
                 uint32_t dstThreadId=((packet_t*)buffer)->dest.thread;
 
-                fprintf(stderr, "Thread/0x%08x/in : delivering message of length %u from thread 0x%08x to thread 0x%08x\n", threadId, len, srcThreadId, dstThreadId);                 
+                if(hardLogLevel >=2 ){
+                    fprintf(stderr, "[%08x] HARD / in : delivering message of length %u from thread 0x%08x to thread 0x%08x\n", threadId, len, srcThreadId, dstThreadId);                 
+                }
                 mboxLocal->netPushMessage(dstThreadId, len, buffer);
             }           
         }catch(std::exception &e){
-            fprintf(stderr, "Thread/0x%08x/in : Exception : %s\n", threadId, e.what());
+            fprintf(stderr, "[%08x] HARD / in : Exception : %s\n", threadId, e.what());
             exit(1);
         }
     });
@@ -112,7 +124,9 @@ void mbox_thread(uint32_t threadId)
     
     std::thread outgoing([&](){
         try{
-            fprintf(stderr, "Thread/0x%08x/out : Starting outgoing thread\n", threadId);     
+            if(hardLogLevel >=1){
+                fprintf(stderr, "[%08x] HARD / out : Starting outgoing thread\n", threadId);     
+            }
             
             unsigned bufferLen=mbox_t::WordsPerMsg*4;
             void *buffer=malloc(bufferLen);
@@ -121,28 +135,36 @@ void mbox_thread(uint32_t threadId)
                 uint32_t dstThreadId;
                 uint32_t byteLength;
                 
-                fprintf(stderr, "Thread/0x%08x/out : Waiting to pull message from mailbox\n", threadId);     
+                if(hardLogLevel >= 2){
+                    fprintf(stderr, "[%08x] HARD / out : Waiting to pull message from mailbox\n", threadId);     
+                }
                 mboxLocal->netPullMessage(dstThreadId, byteLength, buffer);
                 
                 assert(byteLength <= 4*mbox_t::WordsPerMsg);
                 
-                fprintf(stderr, "Thread/0x%08x/out : Pulled message to %08x of length %u\n", threadId, dstThreadId, byteLength);     
+                if(hardLogLevel >= 2){
+                    fprintf(stderr, "[%08x] HARD / out :  Pulled message to %08x of length %u\n", threadId, dstThreadId, byteLength);     
+                }
                 
                 
                 if(MPI_SUCCESS != MPI_Send(buffer, byteLength, MPI_BYTE, dstThreadId, /*tag*/0, MPI_COMM_WORLD)){
                     throw std::runtime_error("MPI_Send");
                 }
                 
-                fprintf(stderr, "Thread/0x%08x/out : Send message to %08x\n", threadId, dstThreadId);     
+                if(hardLogLevel >= 2){
+                    fprintf(stderr, "[%08x] HARD / out : Send message to %08x\n", threadId, dstThreadId);     
+                }
 
             }
         }catch(std::exception &e){
-            fprintf(stderr, "Thread/0x%08x/out : Exception : %s\n", threadId, e.what());
+            fprintf(stderr, "[%08x] HARD / out : Exception : %s\n", threadId, e.what());
             exit(1);
         }
     });
    
-    fprintf(stderr, "Thread/0x%08x/cpu : Starting soft-switch\n", threadId);     
+    if(hardLogLevel >= 1){
+        fprintf(stderr, "[%08x] HARD : Starting soft-switch\n", threadId);     
+    }
     softswitch_main();
 
     incoming.join();
@@ -160,7 +182,9 @@ int main(int argc, char *argv[])
             throw std::runtime_error("MPI_Init_thread");
         }
         if(providedLevel < MPI_THREAD_MULTIPLE){
-            throw std::runtime_error("MPI_Init_thread, level too low.");
+            std::stringstream acc;
+            acc<<"MPI_Init_thread, level too low: wanted "<<MPI_THREAD_MULTIPLE<<", but got "<<providedLevel;
+            throw std::runtime_error(acc.str());
         }
         
         int mpiSize;
@@ -182,7 +206,17 @@ int main(int argc, char *argv[])
             }
         }
         
-        mbox_thread(mpiRank);
+        int applLogLevel=4;
+        int softLogLevel=4;
+        int hardLogLevel=4;
+        
+        for(int i=0; i<softswitch_pthread_count; i++){
+            softswitch_pthread_contexts[i].applLogLevel=applLogLevel;
+            softswitch_pthread_contexts[i].softLogLevel=softLogLevel;
+            softswitch_pthread_contexts[i].hardLogLevel=hardLogLevel;
+        }
+        
+        mbox_thread(mpiRank, hardLogLevel);
         
         MPI_Finalize();
     }catch(std::exception &e){

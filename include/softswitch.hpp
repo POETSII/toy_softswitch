@@ -168,7 +168,9 @@ struct PThreadContext
                          // If rtcChecked >= numDevices, we know there is no-one who wants to compute
     uint32_t rtcOffset;  // Where we are in the checking list (to make things somewhat fair)
 
-    int logLevel;        // Controls how much output is printed
+    int applLogLevel;        // Controls how much output is printed from the application
+    int softLogLevel;        // Controls how much output is printed from the softswitch
+    int hardLogLevel;        // Controls how much output is printed from hardware
 
     // This is used by the softswitch to track which device (if any) is active, so that we know during things like handler_log
     uint32_t currentDevice; 
@@ -184,8 +186,27 @@ extern "C" DeviceContext *softswitch_PopRTS(PThreadContext *pCtxt);
 
 extern "C" bool softswitch_IsRTSReady(PThreadContext *pCtxt);
 
+
+
 //! Allows logging from within a device handler
-extern "C" void softswitch_handler_log(int level, const char *msg, ...);
+#ifndef POETS_DISABLE_LOGGING
+#define softswitch_handler_log(level, ...) \
+    softswitch_handler_log_impl(level, __VA_ARGS__)
+#else
+#define softswitch_handler_log(level, ...) \
+    ((void)0)
+#endif
+extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...);
+
+//! Allows logging from within the softswitch
+#ifndef POETS_DISABLE_LOGGING
+#define softswitch_softswitch_log(level, ...) \
+    softswitch_softswitch_log_impl(level, __VA_ARGS__)
+#else
+#define softswitch_softswitch_log(level, ...) \
+    ((void)0)
+#endif
+extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...);
 
 
 //! Gives the total number of threads in the application

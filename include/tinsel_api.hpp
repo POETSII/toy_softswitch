@@ -37,7 +37,7 @@ uint32_t tinsel_mboxCanRecv();
 volatile void* tinsel_mboxRecv();
 
 // Thread can be woken by a logical-OR of these events
-typedef enum {TINSEL_CAN_SEND = 1, TINSEL_CAN_RECV = 2} tinsel_WakeupCond;
+typedef enum {tinsel_CAN_SEND = 1, tinsel_CAN_RECV = 2} tinsel_WakeupCond;
 
 // Suspend thread until wakeup condition satisfied
 void tinsel_mboxWaitUntil(tinsel_WakeupCond cond);

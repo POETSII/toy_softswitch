@@ -6,22 +6,25 @@
 //! Deal with the incoming message
 extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
 {
-    fprintf(stderr, "softswitch_onReceive: begin\n");
-    
     const packet_t *packet=(const packet_t*)message;
+    
+    assert(packet); // Anything arriving via this route must have been a real packet (no init message via this route)
+
+    softswitch_softswitch_log(4, "softswitch_onReceive /  dst=%08x:%04x:%02x, src=%08x:%04x:%02x", packet->dest.thread, packet->dest.device, packet->dest.port, packet->source.thread, packet->source.device, packet->source.port);
+    
     
     ctxt->lamport=std::max(ctxt->lamport,packet->lamport)+1;
     
     // Map to the device and its vtable
     unsigned deviceIndex=packet->dest.device;
-    fprintf(stderr, "softswitch_onReceive:   finding vtable, device inst index=%u\n", deviceIndex);
+    softswitch_softswitch_log(4, "softswitch_onReceive / finding vtable, device inst index=%u", deviceIndex);
     assert( deviceIndex < ctxt->numDevices );
     DeviceContext *dev=ctxt->devices + deviceIndex;
     const DeviceTypeVTable *vtable=dev->vtable;
         
     // Map to the particular port
     unsigned portIndex=packet->dest.port;
-    fprintf(stderr, "softswitch_onReceive:   finding port, port name index=%u\n", portIndex);
+    softswitch_softswitch_log(4, "softswitch_onReceive / finding port, port name index=%u", portIndex);
     assert(portIndex < vtable->numInputs);
     const InputPortVTable *port=vtable->inputPorts + portIndex;
     receive_handler_t handler=port->receiveHandler;
@@ -32,7 +35,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
     if(port->propertiesSize | port->stateSize){
         // We have to look up the edge info associated with this edge
         
-        fprintf(stderr, "softswitch_onReceive:   finding edge info, src=%08x:%04x:%02x, msg.laport=%u\n", packet->source.thread, packet->source.device, packet->source.port, packet->lamport);
+        softswitch_softswitch_log(4, "softswitch_onReceive / finding edge info, src=%08x:%04x:%02x, msg.laport=%u", packet->source.thread, packet->source.device, packet->source.port, packet->lamport);
     
         
         const InputPortBinding *begin=dev->sources[portIndex].sourceBindings;
@@ -46,8 +49,17 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
             if(a.source.device > b.device) return false;
             return a.source.port < b.port;
         });
+        if(edge==end){
+            softswitch_softswitch_log(0, "softswitch_onReceive / no edge found for packet : dst=%08x:%04x:%02x, src=%08x:%04x:%02x", packet->dest.thread, packet->dest.device, packet->dest.port, packet->source.thread, packet->source.device, packet->source.port);
+        }
         
-        assert(edge->source.device==packet->source.device && edge->source.thread==packet->source.thread && edge->source.port==packet->source.port);
+        softswitch_softswitch_log(4, "softswitch_onReceive / found edge, src=%08x:%04x:%02x=%u", edge->source.thread, edge->source.device, edge->source.port);
+    
+        
+        assert(edge->source.port==packet->source.port);
+        assert(edge->source.device==packet->source.device);
+        assert(edge->source.thread==packet->source.thread);
+        
         
         eProps=edge->edgeProperties;
         eState=edge->edgeState;
@@ -58,7 +70,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
     
             
     // Call the application level handler
-    fprintf(stderr, "softswitch_onReceive:   begin application handler, packet=%p, payload=%p\n", packet, packet->payload);
+    softswitch_softswitch_log(4, "softswitch_onReceive / begin application handler, packet=%p, payload=%p", packet, packet->payload);
     
     // Needed for handler logging
     ctxt->currentDevice=deviceIndex;
@@ -76,11 +88,11 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
 
     ctxt->currentHandlerType=0;
 
-    fprintf(stderr, "softswitch_onReceive:   end application handler\n");
+    softswitch_softswitch_log(4, "softswitch_onReceive / end application handler\n");
 
-    fprintf(stderr, "softswitch_onReceive:   updating RTS\n");
+    softswitch_softswitch_log(4, "softswitch_onReceive / updating RTS\n");
     softswitch_UpdateRTS(ctxt, dev);
-    fprintf(stderr, "softswitch_onReceive:   new rts=%x\n", dev->rtsFlags);
+    softswitch_softswitch_log(4, "softswitch_onReceive / new rts=%x\n", dev->rtsFlags);
     
-    fprintf(stderr, "softswitch_onReceive: end\n");
+    softswitch_softswitch_log(3, "softswitch_onReceive / end");
 }

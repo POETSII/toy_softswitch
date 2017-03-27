@@ -1,9 +1,10 @@
 
 CXXFLAGS += -g -std=c++11 -W -Wall -I include -pthread
 
-lib/tinsel_mpi.a : src/tinsel/tinsel_on_mpi.o
+lib/tinsel_mpi.a : src/tinsel/tinsel_on_mpi.cpp
+	mpicxx $(CXXFLAGS) -c -o src/tinsel/tinsel_on_mpi.o src/tinsel/tinsel_on_mpi.cpp
 	mkdir -p lib
-	ar rcs $@ $^
+	ar rcs $@ src/tinsel/tinsel_on_mpi.o
 	
 lib/tinsel_unix.a : src/tinsel/tinsel_on_unix.o
 	mkdir -p lib
@@ -59,7 +60,7 @@ run_unix_% : lib/tinsel_unix.a lib/softswitch.a lib/%.a
 	$(CXX) -pthread -std=c++11 -W -Wall -o $@  $^
 
 run_mpi_% : lib/tinsel_mpi.a lib/softswitch.a lib/%.a
-	$(CXX) -pthread -std=c++11 -W -Wall -o $@  $^ -lmpi
+	mpicxx -pthread -std=c++11 -W -Wall -o $@  $^ -lmpi
 
 
 adb_poc : lib/softswitch.a src/adb/main.cpp src/adb/dummies.cpp

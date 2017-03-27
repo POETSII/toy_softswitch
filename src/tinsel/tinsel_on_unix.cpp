@@ -14,6 +14,7 @@ static thread_local mbox_t *mbox = 0;
 #include <unistd.h>
 #include <vector>
 #include <cstdarg>
+#include <getopt.h>
 
 #include "softswitch.hpp"
 
@@ -64,7 +65,7 @@ void tinsel_puts(const char *msg)
 }
 
 
-void mbox_thread(const char *socketDir, uint32_t threadId)
+void mbox_thread(const char *socketDir, uint32_t threadId, int logLevel)
 {
     char addrTemplate[128];
     snprintf(addrTemplate, sizeof(addrTemplate), "%s/%%08xl", socketDir);
@@ -76,14 +77,14 @@ void mbox_thread(const char *socketDir, uint32_t threadId)
     // end up on a different variable.
     mbox_t *mboxLocal=mbox;
     
-    mbox->init(threadId);
+    mbox->init(threadId,logLevel);
         
     struct sockaddr_un mboxAddr;
     memset(&mboxAddr,0,sizeof(sockaddr_un));
     mboxAddr.sun_family=AF_UNIX;
     snprintf(mboxAddr.sun_path, 107, addrTemplate, threadId);
 
-    fprintf(stderr, "Thread/0x%08x : Opening socket %s\n", threadId, mboxAddr.sun_path); 
+    mbox->log(1, "Thread/0x%08x : Opening socket %s\n", threadId, mboxAddr.sun_path); 
     int mboxSocket=socket(AF_UNIX,SOCK_DGRAM,0);
     if(mboxSocket==-1){
         perror("socket");
@@ -102,7 +103,7 @@ void mbox_thread(const char *socketDir, uint32_t threadId)
  
     std::thread incoming([&](){
         try{        
-            fprintf(stderr, "Thread/0x%08x/in : Starting incoming thread\n", threadId);     
+            mboxLocal->log(1,"/ in : Starting incoming thread", threadId);     
             
             unsigned bufferLen=mbox_t::WordsPerMsg*4;
             void *buffer=malloc(bufferLen);
@@ -111,7 +112,7 @@ void mbox_thread(const char *socketDir, uint32_t threadId)
             socklen_t srcAddrLen;
             
             while(1){
-                fprintf(stderr, "Thread/0x%08x/in : Waiting for message from network\n", threadId);     
+                mboxLocal->log(2,"/ in : Waiting for message from network", threadId);     
                 memset(&srcAddr, 0, sizeof(srcAddr));
                 srcAddrLen=sizeof(srcAddr);
                 auto len=recvfrom(mboxSocket, buffer, bufferLen, 0, (struct sockaddr *)&srcAddr, &srcAddrLen);
@@ -124,23 +125,11 @@ void mbox_thread(const char *socketDir, uint32_t threadId)
                     exit(1);
                 }
                 
-                fprintf(stderr, "Thread/0x%08x/in : Received message of length %u from socket address '%s'\n", threadId, len, srcAddr.sun_path);     
-                
                 uint32_t srcThreadId;
-                if(0){
-                    // Get the thread id out of the address for sanity purposes...                
-                    if(1 != sscanf(srcAddr.sun_path, addrTemplate, &srcThreadId)){
-                        fprintf(stderr, "Thread/0x%08x/in : Couldn't parse threadId from socket address '%s'\n", threadId, srcAddr.sun_path);
-                        puts(srcAddr.sun_path);
-                        exit(1);
-                    }
-                }else{
-                    // cygwin doesn't fill in the source path...
-                    srcThreadId=((packet_t*)buffer)->source.thread;
-                }
+                srcThreadId=((packet_t*)buffer)->source.thread;
                 uint32_t dstThreadId=((packet_t*)buffer)->dest.thread;
 
-                fprintf(stderr, "Thread/0x%08x/in : delivering message of length %u from thread 0x%08x to thread 0x%08x\n", threadId, len, srcThreadId, dstThreadId);                 
+                mboxLocal->log(2, "/ in : delivering message of length %u from thread 0x%08x to thread 0x%08x", threadId, len, srcThreadId, dstThreadId);                 
                 mboxLocal->netPushMessage(dstThreadId, len, buffer);
             }           
         }catch(std::exception &e){
@@ -152,7 +141,7 @@ void mbox_thread(const char *socketDir, uint32_t threadId)
     
     std::thread outgoing([&](){
         try{
-            fprintf(stderr, "Thread/0x%08x/out : Starting outgoing thread\n", threadId);     
+            mboxLocal->log(1, "/ out : Starting outgoing thread", threadId);     
             
             unsigned bufferLen=mbox_t::WordsPerMsg*4;
             void *buffer=malloc(bufferLen);
@@ -161,20 +150,20 @@ void mbox_thread(const char *socketDir, uint32_t threadId)
             socklen_t srcAddrLen;
             
             while(1){
-                uint32_t dstThreadId;
-                uint32_t byteLength;
+                uint32_t dstThreadId=-1;
+                uint32_t byteLength=-1;
                 
-                fprintf(stderr, "Thread/0x%08x/out : Waiting to pull message from mailbox\n", threadId);     
+                mboxLocal->log(2, "/out : Waiting to pull message from mailbox", threadId);     
                 mboxLocal->netPullMessage(dstThreadId, byteLength, buffer);
                 
                 assert(byteLength <= 4*mbox_t::WordsPerMsg);
                 
-                fprintf(stderr, "Thread/0x%08x/out : Pulled message to %08x of length %u\n", threadId, dstThreadId, byteLength);     
+                mboxLocal->log(2, "/out : Pulled message to %08x of length %u", threadId, dstThreadId, byteLength);     
                 
                 srcAddrLen=sizeof(srcAddr);
                 srcAddr.sun_family=AF_UNIX;
                 if(107 <= snprintf(srcAddr.sun_path, 107, addrTemplate, dstThreadId)){
-                    fprintf(stderr, "Thread/0x%08x/out : Couldn't create address for threadId %08x\n", threadId, dstThreadId);
+                    fprintf(stderr, "Thread/0x%08x/out : Couldn't create address for threadId %08x", threadId, dstThreadId);
                     fprintf(stderr, addrTemplate, dstThreadId);
                     exit(1);
                 }
@@ -188,7 +177,7 @@ void mbox_thread(const char *socketDir, uint32_t threadId)
                     perror("sendto/size");
                     exit(1);
                 }
-                fprintf(stderr, "Thread/0x%08x/out : Send message to %08x\n", threadId, dstThreadId);     
+                mboxLocal->log(2, "/ out : Send message to %08x", threadId, dstThreadId);     
 
             }
         }catch(std::exception &e){
@@ -196,10 +185,8 @@ void mbox_thread(const char *socketDir, uint32_t threadId)
             exit(1);
         }
     });
-   
-    sleep(1);
 
-    fprintf(stderr, "Thread/0x%08x/cpu : Starting soft-switch\n", threadId);     
+    mboxLocal->log(1,"Thread/0x%08x/cpu : Starting soft-switch", threadId);     
     softswitch_main();
 
     incoming.join();
@@ -210,19 +197,81 @@ void mbox_thread(const char *socketDir, uint32_t threadId)
 
 
 
-int main(int argc, const char *argv[])
+int main(int argc, char *argv[])
 {
     try{
         
-        const char *socketDir=argv[1];
+        std::string socketDir("/tmp/tinsel_on_unix.XXXXXXXX");
         
         uint32_t threadId=-1;
         
-        // See note by `mbox` global variable. I'd prefer to use threads.
         bool useThreads=true;
         
+        int applLogLevel=5;
+        int softLogLevel=5;
+        int hardLogLevel=5;
+        
+        
+        while (1){
+          static struct option long_options[] =
+            {
+              {"appl-log-level",    required_argument,    0, 'a'},
+              {"soft-log-level",    required_argument,    0, 's'},
+              {"hard-log-level",    required_argument,    0, 'h'},
+              {"socket-dir",        optional_argument,    0, 'd'},
+              {0, 0, 0, 0}
+            };
+            int option_index = 0;
+
+            int c = getopt_long (argc, argv, "a:s:h:d:", long_options, &option_index);
+            if (c == -1){
+                break;
+            }
+
+            switch (c)
+            {
+            case 'a':  applLogLevel=atoi(optarg); break;
+            case 's':  softLogLevel=atoi(optarg); break;
+            case 'h':  hardLogLevel=atoi(optarg); break;
+            case 'd':  socketDir=optarg; break;
+            case '?':   break;
+            default:    exit(1);
+            }
+        }
+        
+        for(int i=0; i<softswitch_pthread_count; i++){
+            softswitch_pthread_contexts[i].applLogLevel=applLogLevel;
+            softswitch_pthread_contexts[i].softLogLevel=softLogLevel;
+            softswitch_pthread_contexts[i].hardLogLevel=hardLogLevel;
+        }
+        
+        //////////////////////////////////////////
+        // Check the template, and make socket directory
+        
+        int numXs=0;
+        auto rit=socketDir.rbegin();
+        while(rit!=socketDir.rend()){
+            if(*rit!='X')
+                break;
+            numXs++;
+            ++rit;
+        }
+        if(numXs==0){
+            socketDir+=".";
+        }
+        while(numXs<8){
+            socketDir+="X";
+            numXs++;
+        }
+        
+        socketDir.c_str();
+        mkdtemp (&socketDir[0]);
+        
+        
+        ////////////////////////////////////////////////
+        
         if(softswitch_pthread_count==1){
-            mbox_thread(socketDir, 0);
+            mbox_thread(socketDir.c_str(), 0, hardLogLevel);
         }else if(!useThreads){
             for(threadId=0; threadId<softswitch_pthread_count-1; threadId++){
                 auto pid=fork();
@@ -231,12 +280,12 @@ int main(int argc, const char *argv[])
                 }
             }
             
-            mbox_thread(socketDir, threadId);
+            mbox_thread(socketDir.c_str(), threadId, hardLogLevel);
         }else{
             std::vector<std::thread> threads;
             for(unsigned i=0; i<softswitch_pthread_count; i++){
                 uint32_t threadId=i;
-                threads.emplace_back( [&,threadId](){ mbox_thread(socketDir, threadId); } );
+                threads.emplace_back( [&,threadId](){ mbox_thread(socketDir.c_str(), threadId, hardLogLevel); } );
             }
             
             for(unsigned i=0; i<softswitch_pthread_count; i++){

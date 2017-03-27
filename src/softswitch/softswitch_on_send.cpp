@@ -22,8 +22,7 @@ static unsigned right_most_one(uint32_t x)
 */
 extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets)
 {
-    fprintf(stderr, "softswitch_onSend:   begin\n");    
-
+    softswitch_softswitch_log(3, "softswitch_onSend : begin");    
     
     numTargets=0;
     pTargets=0;
@@ -38,11 +37,11 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     assert(dev->rtsFlags);
     unsigned portIndex=right_most_one(dev->rtsFlags);
     
-    fprintf(stderr, "softswitch_onSend:   device=%08x:%04x, rtsFlags=%x, selected=%u\n", ctxt->threadId, dev->index,  dev->rtsFlags, portIndex);    
+    softswitch_softswitch_log(4, "softswitch_onSend : device=%08x:%04x, rtsFlags=%x, selected=%u", ctxt->threadId, dev->index,  dev->rtsFlags, portIndex);    
 
     send_handler_t handler=vtable->outputPorts[portIndex].sendHandler;
 
-    fprintf(stderr, "softswitch_onSend:   calling application handler\n");    
+    softswitch_softswitch_log(4, "softswitch_onSend : calling application handler");    
 
     ctxt->lamport++;
     
@@ -60,7 +59,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
 
     ctxt->currentHandlerType=0;
     
-    fprintf(stderr, "softswitch_onSend:   application handler done, doSend=%d\n", doSend?1:0);    
+    softswitch_softswitch_log(4, "softswitch_onSend : application handler done, doSend=%d", doSend?1:0);    
 
     
     if(doSend){
@@ -72,15 +71,15 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
         ((packet_t*)message)->lamport=ctxt->lamport;
     }
     
-    fprintf(stderr, "softswitch_onSend:   numTargets=%u, pTargets=%p\n", numTargets, pTargets);    
+    softswitch_softswitch_log(4, "softswitch_onSend : numTargets=%u, pTargets=%p", numTargets, pTargets);    
 
-    fprintf(stderr, "softswitch_onSend:   updating RTS\n");    
+    softswitch_softswitch_log(4, "softswitch_onSend : updating RTS");    
     dev->rtsFlags=0;    // Reflect that it is no longer on the RTC list due to the pop
     dev->rtc=false; 
     softswitch_UpdateRTS(ctxt, dev);
-    fprintf(stderr, "softswitch_onSend:   rtsFlags=%x\n", dev->rtsFlags);    
+    softswitch_softswitch_log(4, "softswitch_onSend : rtsFlags=%x", dev->rtsFlags);    
     
-    fprintf(stderr, "softswitch_onSend:   end\n");    
+    softswitch_softswitch_log(3, "softswitch_onSend : end");    
     
     return vtable->outputPorts[portIndex].messageSize;
 }

@@ -7,8 +7,10 @@
 #include <thread>
 #include <cstring>
 #include <condition_variable>
+#include <cstdarg>
 
 #include "tinsel_api.hpp"
+
 
 template<
     unsigned LogMsgsPerThread,
@@ -55,6 +57,7 @@ private:
     uint32_t m_sendSlot;
     uint32_t m_sendLength;
 
+    int m_logLevel;
 
     unsigned findSlot(const void *p)
     {
@@ -66,19 +69,62 @@ private:
         assert(0);
     }
     
+    
+    static void append_vprintf(int &left, char *&dst, const char *msg, va_list v)
+    {
+        int done=vsnprintf(dst, left, msg, v);
+        
+        if(done>0){
+            assert(done<=left);
+            left-=done;
+            dst+=done;
+        }
+    }
+
+    static void append_printf(int &left, char *&dst, const char *msg, ...)
+    {
+        va_list v;
+        va_start(v,msg);
+        append_vprintf(left, dst, msg, v);
+        va_end(v);
+    }
 public:
     
-    void init(uint32_t threadId)
+    void init(uint32_t threadId, int logLevel=0)
     {
         m_myThreadId=threadId;
         m_numSlotsEmpty=0;
         m_numSlotsFull=0;
         m_sendActive=false;
+        m_logLevel=logLevel;
         
         // All slots start with software
         for(unsigned i=0; i<MsgsPerThread; i++){
             m_slots[i].status=SoftwareOwned;
         }
+    }
+    
+    void log(int logLevel, const char *msg, ...){
+        if(logLevel > m_logLevel)
+            return;
+        
+        char buffer[300]={0};
+        int left=sizeof(buffer)-3;
+        char *dst=buffer;
+        
+        
+
+        append_printf(left, dst, "[%08x] HARD : ", m_myThreadId);
+
+        va_list v;
+        va_start(v,msg);
+        append_vprintf(left, dst, msg, v);
+        va_end(v);
+
+        append_printf(left, dst, "\n");
+
+        tinsel_puts(buffer);
+        
     }
 
     //////////////////////////////////////////

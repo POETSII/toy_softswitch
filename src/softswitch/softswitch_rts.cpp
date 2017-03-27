@@ -40,8 +40,8 @@ static void rts_remove(PThreadContext *pCtxt, DeviceContext *dCtxt)
 {
     rts_sanity(pCtxt);    
     
-    fprintf(stderr, "softswitch_rts_remove:     begin, rtsHead=%p, rtsTail=%p, dCtxt->prev=%p, dCtxt->next=%p\n",
-        pCtxt->rtsHead, pCtxt->rtsTail, dCtxt->prev, dCtxt->next
+    softswitch_softswitch_log(4, "softswitch_UpdateRTS (%s) : softswitch_rts_remove:     begin, rtsHead=%p, rtsTail=%p, dCtxt->prev=%p, dCtxt->next=%p",
+        dCtxt->id, pCtxt->rtsHead, pCtxt->rtsTail, dCtxt->prev, dCtxt->next
     );       
     
     assert(pCtxt->rtsHead);
@@ -56,7 +56,7 @@ static void rts_remove(PThreadContext *pCtxt, DeviceContext *dCtxt)
     }else{
         dCtxt->next->prev=dCtxt->prev; // 3
     }
-    fprintf(stderr, "softswitch_rts_remove:     end\n");       
+    softswitch_softswitch_log(4, "softswitch_UpdateRTS (%s) : softswitch_rts_remove:     end", dCtxt->id);       
     
     rts_sanity(pCtxt);
 }
@@ -93,7 +93,7 @@ extern "C" void softswitch_UpdateRTS(
     rts_sanity(pCtxt);
     
     // Find out if the handler wants to send or compute in the future
-    fprintf(stderr, "softswitch_UpdateRTS:     begin\n");    
+    softswitch_softswitch_log(3, "softswitch_UpdateRTS (%s) : begin", dev->id);    
     uint32_t flags = dev->vtable->readyToSendHandler(
         pCtxt->graphProps,
         dev->properties,
@@ -112,21 +112,21 @@ extern "C" void softswitch_UpdateRTS(
     
     // Check if overall output RTS status is the same (ignoring which ports) 
     if( anyReadyPrev == anyReadyNow ){
-        fprintf(stderr, "softswitch_UpdateRTS:     done (no change)\n");       
+        softswitch_softswitch_log(3, "softswitch_UpdateRTS (%s) : done (no change), prev=%x, now=%x", dev->id, dev->rtsFlags, flags);       
         return;
     }
     
     if(anyReadyNow){
-        fprintf(stderr, "softswitch_UpdateRTS:     adding to RTS list\n");       
+        softswitch_softswitch_log(3, "softswitch_UpdateRTS (%s) : adding to RTS list", dev->id);       
 
         rts_append(pCtxt, dev);
     }else{
-        fprintf(stderr, "softswitch_UpdateRTS:     removing from RTS list\n");       
+        softswitch_softswitch_log(3, "softswitch_UpdateRTS (%s) : removing from RTS list", dev->id);       
         rts_remove(pCtxt, dev);
     }
     dev->rtsFlags=flags; 
     
-    fprintf(stderr, "softswitch_UpdateRTS:     done, flags=%x\n", dev->rtsFlags);       
+    softswitch_softswitch_log(3, "softswitch_UpdateRTS (%s) : done, flags=%x", dev->id, dev->rtsFlags);       
 }
 
 extern "C" DeviceContext *softswitch_PopRTS(PThreadContext *pCtxt)
