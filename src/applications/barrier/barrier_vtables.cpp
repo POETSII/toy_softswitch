@@ -82,7 +82,7 @@ OutputPortVTable OUTPUT_VTABLES_dev[OUTPUT_COUNT_dev]={
     {
         (send_handler_t)dev_out_send_handler,
         sizeof(packet_t)+sizeof(tick_msg),
-        "tick"
+        "out"
     },{
         (send_handler_t)dev_halt_send_handler,
         sizeof(packet_t)+sizeof(done_msg),

@@ -59,14 +59,16 @@ InputPortVTable INPUT_VTABLES_dev[INPUT_COUNT_dev]={
         (receive_handler_t)dev_in_receive_handler,
         sizeof(packet_t)+sizeof(token_msg),
         0,
-        0
+        0,
+        "in"
     }
 };
 
 OutputPortVTable OUTPUT_VTABLES_dev[OUTPUT_COUNT_dev]={
     {
         (send_handler_t)dev_out_send_handler,
-        sizeof(packet_t)+sizeof(token_msg)
+        sizeof(packet_t)+sizeof(token_msg),
+        "out"
     }
 };
 
@@ -77,6 +79,7 @@ DeviceTypeVTable DEVICE_TYPE_VTABLES[DEVICE_TYPE_COUNT] = {
         OUTPUT_VTABLES_dev,
         INPUT_COUNT_dev,
         INPUT_VTABLES_dev,
-        (compute_handler_t)0 // No compute handler
+        (compute_handler_t)0, // No compute handler
+        "dev"
     }
 };

@@ -162,10 +162,16 @@ PThreadContext softswitch_pthread_contexts[THREAD_COUNT]=
         DEVICE_INSTANCE_COUNT_thread0,
         DEVICE_INSTANCE_CONTEXTS_thread0,
         0, // lamport
+        0,
+        0,
+        0,
         0, // rtsHead
         0, // rtsTail
         0, // rtcChecked
-        0  // rtcOffset
+        0, // rtcOffset
+        0,
+        0,
+        0
     },
     {
         1,
@@ -175,10 +181,16 @@ PThreadContext softswitch_pthread_contexts[THREAD_COUNT]=
         DEVICE_INSTANCE_COUNT_thread1,
         DEVICE_INSTANCE_CONTEXTS_thread1,
         0, // lamport
+        0,
+        0,
+        0,
         0, // rtsHead
         0, // rtsTail
         0, // rtcChecked
-        0  // rtcOffset
+        0,  // rtcOffset
+        0,
+        0,
+        0
     }
 
 };

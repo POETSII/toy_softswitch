@@ -227,10 +227,10 @@ public:
         lock_t lock(m_mutex);
         
         m_condVar.wait(lock, [&](){
-            if( (cond&TINSEL_CAN_SEND) && (m_sendActive==false) ){
+            if( (cond&tinsel_CAN_SEND) && (m_sendActive==false) ){
                 return true;
             }
-            if( (cond&TINSEL_CAN_RECV) && (m_numSlotsFull>0) ){
+            if( (cond&tinsel_CAN_RECV) && (m_numSlotsFull>0) ){
                 return true;
             }
             return false;

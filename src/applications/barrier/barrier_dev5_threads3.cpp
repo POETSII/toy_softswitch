@@ -17,7 +17,8 @@ graph_props inst0_props{
 dev_state dev0_state{
     0,
     DEVICE_INSTANCE_COUNT-1,
-    0
+    0,
+    false
 };
 address_t dev0_out_addresses[]={
     {
@@ -64,7 +65,8 @@ OutputPortTargets dev0_targets[]={
 dev_state dev1_state{
     0,
     DEVICE_INSTANCE_COUNT-1,
-    0
+    0,
+    false
 };
 address_t dev1_out_addresses[]={
     {
@@ -111,7 +113,8 @@ OutputPortTargets dev1_targets[]={
 dev_state dev2_state{
     0,
     DEVICE_INSTANCE_COUNT-1,
-    0
+    0,
+    false
 };
 address_t dev2_out_addresses[]={
     {
@@ -158,7 +161,8 @@ OutputPortTargets dev2_targets[]={
 dev_state dev3_state{
     0,
     DEVICE_INSTANCE_COUNT-1,
-    0
+    0,
+    false
 };
 address_t dev3_out_addresses[]={
     {
@@ -221,10 +225,12 @@ DeviceContext DEVICE_INSTANCE_CONTEXTS_thread0[DEVICE_INSTANCE_COUNT_thread0]={
         0, // device index
         dev0_targets, // address lists for ports
         dev0_sources, // source list for edge info
+        "dev0",
         0, // rtsFlags
         false, // rtc
         0,  // prev
-        0   // next
+        0,   // next
+        
     },{
         DEVICE_TYPE_VTABLES+DEVICE_TYPE_INDEX_dev, // vtable
         0, // no properties
@@ -232,6 +238,7 @@ DeviceContext DEVICE_INSTANCE_CONTEXTS_thread0[DEVICE_INSTANCE_COUNT_thread0]={
         1, // device index
         dev1_targets, // address lists for ports
         dev1_sources, // source list for edge info
+        "dev1",
         0, // rtsFlags
         false, // rtc
         0,  // prev
@@ -247,6 +254,7 @@ DeviceContext DEVICE_INSTANCE_CONTEXTS_thread1[DEVICE_INSTANCE_COUNT_thread1]={
         0, // device index
         dev2_targets, // address lists for ports
         dev2_sources,
+        "dev2",
         0, // rtsFlags
         false, // rtc
         0,  // prev
@@ -258,6 +266,7 @@ DeviceContext DEVICE_INSTANCE_CONTEXTS_thread1[DEVICE_INSTANCE_COUNT_thread1]={
         1, // device index
         dev3_targets, // address lists for ports
         dev3_sources, // address lists for ports
+        "dev3",
         0, // rtsFlags
         false, // rtc
         0,  // prev
@@ -273,6 +282,7 @@ DeviceContext DEVICE_INSTANCE_CONTEXTS_thread2[DEVICE_INSTANCE_COUNT_thread2]={
         0, // device index
         dev4_targets, // address lists for ports
         dev4_sources,
+        "dev4",
         0, // rtsFlags
         false, // rtc
         0,  // prev
@@ -297,7 +307,13 @@ PThreadContext softswitch_pthread_contexts[THREAD_COUNT]=
         0, // rtsHead
         0, // rtsTail
         0, // rtcChecked
-        0  // rtcOffset
+        0,  // rtcOffset
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
     },
     {
         1,
@@ -310,7 +326,13 @@ PThreadContext softswitch_pthread_contexts[THREAD_COUNT]=
         0, // rtsHead
         0, // rtsTail
         0, // rtcChecked
-        0  // rtcOffset
+        0,  // rtcOffset
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
     },
     {
         2,
@@ -323,7 +345,13 @@ PThreadContext softswitch_pthread_contexts[THREAD_COUNT]=
         0, // rtsHead
         0, // rtsTail
         0, // rtcChecked
-        0  // rtcOffset
+        0,  // rtcOffset
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
     }
 
 };

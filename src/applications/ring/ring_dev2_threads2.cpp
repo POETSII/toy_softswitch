@@ -61,6 +61,7 @@ DeviceContext DEVICE_INSTANCE_CONTEXTS_thread0[1]={
         0, // device index
         dev0_targets, // address lists for ports
         dev0_sources,
+        "dev0",
         0, // rtsFlags
         false, // rtc
         0,  // prev
@@ -76,6 +77,7 @@ DeviceContext DEVICE_INSTANCE_CONTEXTS_thread1[1]={
         0, // device index
         dev1_targets, // address lists for ports
         dev1_sources,
+        "dev1",
         0, // rtsFlags
         false, // rtc
         0,  // prev
@@ -102,7 +104,13 @@ PThreadContext softswitch_pthread_contexts[THREAD_COUNT]=
         0, // rtsHead
         0, // rtsTail
         0, // rtcChecked
-        0  // rtcOffset
+        0, // rtcOffset
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
     },
     {
         1,
@@ -115,7 +123,13 @@ PThreadContext softswitch_pthread_contexts[THREAD_COUNT]=
         0, // rtsHead
         0, // rtsTail
         0, // rtcChecked
-        0  // rtcOffset
+        0,  // rtcOffset
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
     }
 
 };

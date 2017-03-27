@@ -64,14 +64,16 @@ InputPortVTable INPUT_VTABLES_inner[INPUT_COUNT_inner]={
         (receive_handler_t)inner_in_receive_handler,
         sizeof(packet_t)+sizeof(tick_msg),
         sizeof(inner_in_props),
-        0
+        0,
+        "in"
     }
 };
 
 OutputPortVTable OUTPUT_VTABLES_outer[OUTPUT_COUNT_outer]={
     {
         (send_handler_t)outer_out_send_handler,
-        sizeof(packet_t)+sizeof(tick_msg)
+        sizeof(packet_t)+sizeof(tick_msg),
+        "out"
     }
 };
 
@@ -92,13 +94,15 @@ DeviceTypeVTable DEVICE_TYPE_VTABLES[DEVICE_TYPE_COUNT] = {
         OUTPUT_VTABLES_outer,
         INPUT_COUNT_outer,
         INPUT_VTABLES_outer,
-        (compute_handler_t)0 // No compute handler
+        (compute_handler_t)0, // No compute handler
+        "outer"
     },{
         (ready_to_send_handler_t)inner_ready_to_send_handler,
         OUTPUT_COUNT_inner,
         OUTPUT_VTABLES_inner,
         INPUT_COUNT_inner,
         INPUT_VTABLES_inner,
-        (compute_handler_t)0 // No compute handler
+        (compute_handler_t)0, // No compute handler
+        "inner"
     }
 };
