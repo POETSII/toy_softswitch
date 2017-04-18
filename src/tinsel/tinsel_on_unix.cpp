@@ -68,8 +68,8 @@ void tinsel_puts(const char *msg)
 void mbox_thread(const char *socketDir, uint32_t threadId, int logLevel)
 {
     char addrTemplate[128];
-    snprintf(addrTemplate, sizeof(addrTemplate), "%s/%%08xl", socketDir);
-    puts(addrTemplate);
+    snprintf(addrTemplate, sizeof(addrTemplate), "%s/%%08x", socketDir);
+    //puts(addrTemplate);
     
     mbox=new mbox_t();
     
@@ -112,7 +112,7 @@ void mbox_thread(const char *socketDir, uint32_t threadId, int logLevel)
             socklen_t srcAddrLen;
             
             while(1){
-                mboxLocal->log(2,"/ in : Waiting for message from network", threadId);     
+                mboxLocal->log(2,"/ in : Waiting for message from network");     
                 memset(&srcAddr, 0, sizeof(srcAddr));
                 srcAddrLen=sizeof(srcAddr);
                 auto len=recvfrom(mboxSocket, buffer, bufferLen, 0, (struct sockaddr *)&srcAddr, &srcAddrLen);
@@ -129,7 +129,7 @@ void mbox_thread(const char *socketDir, uint32_t threadId, int logLevel)
                 srcThreadId=((packet_t*)buffer)->source.thread;
                 uint32_t dstThreadId=((packet_t*)buffer)->dest.thread;
 
-                mboxLocal->log(2, "/ in : delivering message of length %u from thread 0x%08x to thread 0x%08x", threadId, len, srcThreadId, dstThreadId);                 
+                mboxLocal->log(2, "/ in : delivering message of length %u from thread 0x%08x to thread 0x%08x", len, srcThreadId, dstThreadId);                 
                 mboxLocal->netPushMessage(dstThreadId, len, buffer);
             }           
         }catch(std::exception &e){
@@ -153,12 +153,12 @@ void mbox_thread(const char *socketDir, uint32_t threadId, int logLevel)
                 uint32_t dstThreadId=-1;
                 uint32_t byteLength=-1;
                 
-                mboxLocal->log(2, "/out : Waiting to pull message from mailbox", threadId);     
+                mboxLocal->log(2, "/out : Waiting to pull message from mailbox");     
                 mboxLocal->netPullMessage(dstThreadId, byteLength, buffer);
                 
                 assert(byteLength <= 4*mbox_t::WordsPerMsg);
                 
-                mboxLocal->log(2, "/out : Pulled message to %08x of length %u", threadId, dstThreadId, byteLength);     
+                mboxLocal->log(2, "/out : Pulled message to %08x of length %u", dstThreadId, byteLength);     
                 
                 srcAddrLen=sizeof(srcAddr);
                 srcAddr.sun_family=AF_UNIX;
@@ -171,13 +171,14 @@ void mbox_thread(const char *socketDir, uint32_t threadId, int logLevel)
                 auto len=sendto(mboxSocket, buffer, byteLength, 0, (struct sockaddr *)&srcAddr, srcAddrLen);
                 if(len==-1){
                     perror("sendto/error");
+                    fprintf(stderr, "   dst=%s\n", srcAddr.sun_path);
                     exit(1);
                 }
                 if(len!=(int)byteLength){
                     perror("sendto/size");
                     exit(1);
                 }
-                mboxLocal->log(2, "/ out : Send message to %08x", threadId, dstThreadId);     
+                mboxLocal->log(2, "/ out : Send message to %08x", dstThreadId);     
 
             }
         }catch(std::exception &e){
@@ -272,15 +273,6 @@ int main(int argc, char *argv[])
         
         if(softswitch_pthread_count==1){
             mbox_thread(socketDir.c_str(), 0, hardLogLevel);
-        }else if(!useThreads){
-            for(threadId=0; threadId<softswitch_pthread_count-1; threadId++){
-                auto pid=fork();
-                if(pid!=0){
-                    break;
-                }
-            }
-            
-            mbox_thread(socketDir.c_str(), threadId, hardLogLevel);
         }else{
             std::vector<std::thread> threads;
             for(unsigned i=0; i<softswitch_pthread_count; i++){

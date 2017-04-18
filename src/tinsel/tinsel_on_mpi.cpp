@@ -100,12 +100,11 @@ void mbox_thread(uint32_t threadId, int hardLogLevel)
                     throw std::runtime_error("MPI_Get_count");
                 }
                 
-                if(hardLogLevel >= 2){
-                    fprintf(stderr, "[%08x] HARD / in : Received message of length %u from rank '%u'\n", threadId, len, status.MPI_SOURCE);     
-                }
-                
                 uint32_t srcThreadId;
                 srcThreadId=((packet_t*)buffer)->source.thread;
+                if(hardLogLevel >= 2){
+                    fprintf(stderr, "[%08x] HARD / in : Received message of length %u from rank '%u' (srcThread=0x%x)\n", threadId, len, status.MPI_SOURCE, srcThreadId);     
+                }
                 assert((int)srcThreadId == status.MPI_SOURCE);
                
                 uint32_t dstThreadId=((packet_t*)buffer)->dest.thread;

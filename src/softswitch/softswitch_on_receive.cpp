@@ -21,10 +21,11 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
     assert( deviceIndex < ctxt->numDevices );
     DeviceContext *dev=ctxt->devices + deviceIndex;
     const DeviceTypeVTable *vtable=dev->vtable;
+    softswitch_softswitch_log(4, "softswitch_onReceive / device inst id=%s, type=%s", dev->id, vtable->id);
         
     // Map to the particular port
     unsigned portIndex=packet->dest.port;
-    softswitch_softswitch_log(4, "softswitch_onReceive / finding port, port name index=%u", portIndex);
+    softswitch_softswitch_log(4, "softswitch_onReceive / finding port index=%u on device type=%s (vtable->numInput=%d)", portIndex, vtable->id, vtable->numInputs);
     assert(portIndex < vtable->numInputs);
     const InputPortVTable *port=vtable->inputPorts + portIndex;
     receive_handler_t handler=port->receiveHandler;
@@ -49,9 +50,16 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
             if(a.source.device > b.device) return false;
             return a.source.port < b.port;
         });
-        if(edge==end){
+        if(edge==end || edge->source.thread != packet->source.thread || edge->source.device != packet->source.device || edge->source.port != packet->source.port){
             softswitch_softswitch_log(0, "softswitch_onReceive / no edge found for packet : dst=%08x:%04x:%02x, src=%08x:%04x:%02x", packet->dest.thread, packet->dest.device, packet->dest.port, packet->source.thread, packet->source.device, packet->source.port);
+            auto tmp=begin;
+            while(tmp!=end){
+                softswitch_softswitch_log(0, "softswitch_onReceive / possible src=%08x:%04x:%02x", tmp->source.thread, tmp->source.device, tmp->source.port);
+                ++tmp;
+            }
+            exit(1);
         }
+        
         
         softswitch_softswitch_log(4, "softswitch_onReceive / found edge, src=%08x:%04x:%02x=%u", edge->source.thread, edge->source.device, edge->source.port);
     

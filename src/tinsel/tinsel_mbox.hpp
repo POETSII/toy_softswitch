@@ -102,6 +102,8 @@ public:
         for(unsigned i=0; i<MsgsPerThread; i++){
             m_slots[i].status=SoftwareOwned;
         }
+
+        check_slots();
     }
     
     void log(int logLevel, const char *msg, ...){
@@ -151,6 +153,8 @@ public:
     {
         lock_t lock(m_mutex);
 
+        check_slots();
+
         assert(m_numSlotsFull>0);
         
         unsigned i;
@@ -163,6 +167,8 @@ public:
         
         m_slots[i].status=SoftwareOwned;
         m_numSlotsFull--;
+
+        check_slots();
         
         // nobody waiting on the lock needs to be notified
         
@@ -173,10 +179,14 @@ public:
     {
         lock_t lock(m_mutex);
 
+        check_slots();
+
         unsigned index=findSlot(p);
         assert(m_slots[index].status==SoftwareOwned);
         m_slots[index].status=HardwareEmpty;
         m_numSlotsEmpty++;
+
+        check_slots();
         
         if(m_numSlotsEmpty==1){
             // Only if we go from 0 to 1 does anyone need to know 
@@ -187,6 +197,9 @@ public:
     bool mboxCanSend() const
     {
         lock_t lock(m_mutex);
+
+        check_slots();
+
         assert(m_sendActive ? m_slots[m_sendSlot].status==HardwareSend : 1 );
         return !m_sendActive;
     }
@@ -210,11 +223,17 @@ public:
 
         assert(!m_sendActive);
 
+        check_slots();
+
         unsigned index=findSlot(p);
+        assert(m_slots[index].status==SoftwareOwned);
+
         m_sendActive=true;
         m_sendAddress=address;
         m_sendSlot=index;
         m_slots[index].status=HardwareSend;
+
+        check_slots();
         
         // anyone trying to pull needs to know, and we must be going from !sendActive -> sendActive
         m_condVar.notify_all();
@@ -251,6 +270,8 @@ public:
                 return false;
             }
         }
+
+        check_slots();
         
         assert(m_sendLength <= 4*WordsPerMsg);
         assert(m_slots[m_sendSlot].status==HardwareSend);
@@ -260,6 +281,8 @@ public:
         threadId=m_sendAddress;
         byteLength=m_sendLength;
         m_sendActive=false;
+
+        check_slots();
 
         // Anyone in waitUntil(CAN_SEND) needs to know
         m_condVar.notify_all();
@@ -272,6 +295,19 @@ public:
         return netPullMessage(threadId, byteLength, data, false);
     }
 
+    void check_slots() const
+    {
+        unsigned numEmpty=0, numFull=0;
+        for(unsigned i=0;i<MsgsPerThread;i++){
+            if(m_slots[i].status==HardwareEmpty)
+                numEmpty++;
+            if(m_slots[i].status==HardwareFull)
+                numFull++;
+        }
+        assert(numEmpty==m_numSlotsEmpty);
+        assert(numFull==m_numSlotsFull);
+    }
+
     bool netPushMessage(uint32_t dstThreadId, uint32_t byteLength, const void *data, bool block=true)
     {
         lock_t lock(m_mutex);
@@ -279,6 +315,8 @@ public:
         assert(dstThreadId==m_myThreadId); // sanity check
 
         assert(byteLength <= 4*WordsPerMsg);
+
+        check_slots();
         
         if(m_numSlotsEmpty == 0){
             if(block){
@@ -288,9 +326,11 @@ public:
             }
         }
 
+        check_slots();
+
         // Find a slot
         unsigned start=rand()%MsgsPerThread;
-        unsigned sel;
+        unsigned sel=0;
         for(unsigned i=0; i<MsgsPerThread; i++){
             sel=(i+start)%MsgsPerThread;
             if(m_slots[sel].status==HardwareEmpty)
@@ -300,9 +340,12 @@ public:
         assert (m_slots[sel].status==HardwareEmpty);
 
         // Copy message in
+        m_numSlotsEmpty--;
         memcpy(m_slots[sel].buffer, data, byteLength);
         m_slots[sel].status=HardwareFull;
         m_numSlotsFull++;
+
+        check_slots();
         
         // Anyone in a waitUntil(CAN_RECV) needs to know
         m_condVar.notify_all();

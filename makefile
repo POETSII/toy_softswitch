@@ -1,16 +1,17 @@
 
 CXXFLAGS += -g -std=c++11 -W -Wall -I include -pthread -Wno-unused-parameter
 
-lib/tinsel_mpi.a : src/tinsel/tinsel_on_mpi.cpp
+lib/tinsel_mpi.a : src/tinsel/tinsel_on_mpi.cpp src/tinsel/tinsel_mbox.hpp
 	mpicxx $(CXXFLAGS) -c -o src/tinsel/tinsel_on_mpi.o src/tinsel/tinsel_on_mpi.cpp
 	mkdir -p lib
 	ar rcs $@ src/tinsel/tinsel_on_mpi.o
 	
-lib/tinsel_unix.a : src/tinsel/tinsel_on_unix.o
+lib/tinsel_unix.a : src/tinsel/tinsel_on_unix.cpp src/tinsel/tinsel_mbox.hpp
+	g++ $(CXXFLAGS) -c -o src/tinsel/tinsel_on_unix.o src/tinsel/tinsel_on_unix.cpp
 	mkdir -p lib
-	ar rcs $@ $^
+	ar rcs $@ src/tinsel/tinsel_on_unix.o
 
-lib/softswitch.a : $(patsubst %.cpp,%.o,$(wildcard src/softswitch/*.cpp))
+lib/softswitch.a : $(patsubst %.cpp,%.o,$(wildcard src/softswitch/*.cpp)) $
 	mkdir -p lib
 	ar rcs $@ $^
 
@@ -72,6 +73,8 @@ bin/run_mpi_% : lib/tinsel_mpi.a lib/softswitch.a lib/%.a
 
 
 all_unix : $(foreach l,$(ALL_LIBS),bin/run_unix_$(l))
+
+all_mpi : $(foreach l,$(ALL_LIBS),bin/run_mpi_$(l))
 
 
 ###################################################################
