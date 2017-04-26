@@ -209,6 +209,10 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...);
 extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...);
 
 
+// Send a key-value pair back to the host.
+extern "C" void softswitch_handler_log_key_value(uint32_t key, uint32_t value);
+
+
 //! Gives the total number of threads in the application
 extern "C" unsigned softswitch_pthread_count;
 

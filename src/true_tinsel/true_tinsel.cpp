@@ -40,6 +40,8 @@ extern "C" int strcmp(const char *a, const char *b)
   }
 }
 
+#ifndef POETS_DISABLE_LOGGING
+
 extern "C" int vsnprintf_string( char * buffer, int bufsz, char pad, int width, const char *data)
 {
   int done=0;
@@ -191,9 +193,64 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
   return done;
 }
 
+#endif
+
+
+/* Protocol: 
+
+  We need to send data back up to the host, but each word needs to
+  include the source (I think). So we'll use a 16-bit thread id.
+
+  Each word consists of 16-bits of id (hi) and 16-bits of payload (lo)
+
+  Debug output:
+  IIIIFFFF  // header of all ones to indicate debug string
+  IIII00CC  // Payload in LSBS
+  IIII00CC
+  IIII0000  // Terminating NULL.
+
+  Assertion (with no further information):
+  IIIIFFFE  // Magic number for assertion
+
+  Pair of 32-bit values
+  IIII0001  // Magic number
+  IIIIKKKK  // 16-bits of key
+  IIIIKKKK  // 16-bits of key
+  IIIIVVVV  // 16-bits of value
+  IIIIVVVV  // 16-bits value
+
+*/
+
+// Print a string back via debugging channel (i.e. hostlink)
+void tinsel_puts(const char *msg){
+  uint32_t prefix=tinselId()<<16;
+  tinselHostPut(prefix | 0xFFFF);
+  while(1){
+    tinselHostPut(prefix | uint32_t(*msg));
+    if(!*msg){
+      break;
+    }
+    msg++;
+  }
+}
+
+
+extern "C" void softswitch_handler_log_key_value(uint32_t key, uint32_t value)
+{
+  uint32_t prefix=tinselId()<<16;
+
+  tinselHostPut(prefix | 0x1); // Magic value for key value pair
+  tinselHostPut(prefix | (key&0xFFFF));
+  tinselHostPut(prefix | (key>>16));
+  tinselHostPut(prefix | (value&0xFFFF));
+  tinselHostPut(prefix | (value>>16));
+}
+
 extern "C" void __assert_func (const char *file, int line, const char *assertFunc,const char *cond)
 {
-  tinsel_puts("ASSERT-failure");
+  uint32_t prefix=tinselId()<<16;
+
+  tinselHostPut(prefix | 0xFFFE); // Code for an assert
   tinsel_mboxWaitUntil((tinsel_WakeupCond)0);
   while(1);
 }

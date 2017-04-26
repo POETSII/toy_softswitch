@@ -21,7 +21,7 @@ inline void tinsel_writeInstr(uint32_t addr, uint32_t word)
 }
 
 // Cache flush
-inline void tinsel_flush()
+void tinsel_flush()
 {
     tinselCacheFlush();
 }
@@ -82,10 +82,9 @@ unsigned tinsel_mboxSlotCount()
     return 1<<TinselLogMsgsPerThread;
 }
 
-// Print a string back via debugging channel (i.e. hostlink)
-void tinsel_puts(const char *msg){
-    // TODO
-}
+inline void tinsel_hostPut(uint32_t x);
+
+
 
 
 #endif

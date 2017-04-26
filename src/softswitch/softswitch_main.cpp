@@ -26,6 +26,8 @@ static PThreadContext *softswitch_getContext()
     return softswitch_pthread_contexts + tinsel_myId();
 }
 
+#ifndef POETS_DISABLE_LOGGING
+
 static void append_vprintf(int &left, char *&dst, const char *msg, va_list v)
 {
     int done=vsnprintf(dst, left, msg, v);
@@ -106,6 +108,9 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
 
     tinsel_puts(buffer);
 }
+
+#endif
+
 
 extern "C" void softswitch_main()
 {

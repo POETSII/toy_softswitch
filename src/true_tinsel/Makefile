@@ -1,4 +1,6 @@
 # Tinsel root
+POETS_TINSEL_ROOT ?= /POETS/tinsel
+
 TINSEL_ROOT=${POETS_TINSEL_ROOT}
 TOY_SOFTSWITCH_ROOT=../..
 
@@ -10,9 +12,12 @@ APPLICATION ?= ../../generated/apps/clock_tree_8_2_threads16
 
 include $(TINSEL_ROOT)/globals.mk
 
+RV_CXX = riscv64-unknown-elf-g++
+
 # Local compiler flags
-CFLAGS = $(RV_CFLAGS) -Os -I $(INC)  -DNDEBUG=1 -DPOETS_DISABLE_LOGGING=1
-LDFLAGS = -melf32lriscv -G 0 
+CFLAGS = $(RV_CFLAGS) -O3 -I $(INC)  -DNDEBUG=1 -DPOETS_DISABLE_LOGGING=1 -Wno-unused-variable -Wno-unused-local-typedefs
+#LDFLAGS = -melf32lriscv -G 0 
+LDFLAGS = -Wl,-melf32lriscv -Wl,--gpsize=0  -Wl,-Bstatic
 
 CFLAGS += -I ${TOY_SOFTSWITCH_ROOT}/include
 
@@ -36,8 +41,11 @@ APPLICATION_OBJS = $(subst .cpp,.riscv.o,$(APPLICATION_SRCS))
 	$(RV_CXX) $(CFLAGS) -Wall -c -o $@ $<
 	
 
-${DESIGN}.elf: ${DESIGN}.riscv.o  $(SOFTSWITCH_OBJS) $(APPLICATION_OBJS) link.ld $(INC)/config.h $(INC)/tinsel.h
-	$(RV_LD) $(LDFLAGS) -T link.ld -o ${DESIGN}.elf ${DESIGN}.riscv.o  $(SOFTSWITCH_OBJS) $(APPLICATION_OBJS)
+#${DESIGN}.elf: ${DESIGN}.riscv.o  $(SOFTSWITCH_OBJS) $(APPLICATION_OBJS) link.ld $(INC)/config.h $(INC)/tinsel.h
+#	$(RV_LD) $(LDFLAGS) -T link.ld -o ${DESIGN}.elf ${DESIGN}.riscv.o  $(SOFTSWITCH_OBJS) $(APPLICATION_OBJS)
+
+${DESIGN}.elf: ${DESIGN}.cpp  $(SOFTSWITCH_SRCS) $(APPLICATION_SRCS) link.ld $(INC)/config.h $(INC)/tinsel.h
+	$(RV_CXX) $(CFLAGS) -Wall ${DESIGN}.cpp  $(SOFTSWITCH_SRCS) $(APPLICATION_SRCS)  $(LDFLAGS) -T link.ld -o ${DESIGN}.elf 
 
 link.ld: genld.sh
 	./genld.sh > link.ld

@@ -57,7 +57,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
                 softswitch_softswitch_log(0, "softswitch_onReceive / possible src=%08x:%04x:%02x", tmp->source.thread, tmp->source.device, tmp->source.port);
                 ++tmp;
             }
-            exit(1);
+            assert(0);
         }
         
         
