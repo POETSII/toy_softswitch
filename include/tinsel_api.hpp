@@ -46,7 +46,7 @@ void tinsel_mboxWaitUntil(tinsel_WakeupCond cond);
 unsigned tinsel_mboxSlotCount();
 
 // Print a string back via debugging channel (i.e. hostlink)
-void tinsel_puts(const char *msg);
+extern "C" void tinsel_puts(const char *msg);
 
 extern "C" void softswitch_main();
 

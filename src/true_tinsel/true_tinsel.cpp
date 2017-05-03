@@ -203,30 +203,43 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
 
   Each word consists of 16-bits of id (hi) and 16-bits of payload (lo)
 
-  Debug output:
-  IIIIFFFF  // header of all ones to indicate debug string
-  IIII00CC  // Payload in LSBS
-  IIII00CC
-  IIII0000  // Terminating NULL.
+  stdout:
+  IIIIII01  // 1 = stdin
+  IIIIIICC  // Payload in LSBS
+  ...
+  IIIIIICC
+  IIIIII00  // Terminating NULL.
+
+  stderr:
+  IIIIII02  // 2 = stderr
+  IIIIIICC  // Payload in LSBS
+  ...
+  IIIIIICC
+  IIIIII00  // Terminating NULL.
 
   Assertion (with no further information):
-  IIIIFFFE  // Magic number for assertion
+  IIIIIIFE  // Magic number for assertion
 
   Pair of 32-bit values
-  IIII0001  // Magic number
-  IIIIKKKK  // 16-bits of key
-  IIIIKKKK  // 16-bits of key
-  IIIIVVVV  // 16-bits of value
-  IIIIVVVV  // 16-bits value
+  IIIIII10  // Magic number
+  IIIIIIKK  // 8-bits of key (LSB)
+  IIIIIIKK  // 8-bits of key
+  IIIIIIKK  // 8-bits of key
+  IIIIIIKK  // 8-bits of key (MSB)
+  IIIIIIVV  // 8-bits of key (LSB)
+  IIIIIIVV  // 8-bits of key
+  IIIIIIVV  // 8-bits of key
+  IIIIIIVV  // 8-bits of key (MSB)
+
 
 */
 
 // Print a string back via debugging channel (i.e. hostlink)
-void tinsel_puts(const char *msg){
-  uint32_t prefix=tinselId()<<16;
-  tinselHostPut(prefix | 0xFFFF);
+extern "C" void tinsel_puts(const char *msg){
+  uint32_t prefix=tinselId()<<8;
+  tinselHostPut(prefix | 1);
   while(1){
-    tinselHostPut(prefix | uint32_t(*msg));
+    tinselHostPut(prefix | uint32_t(uint8_t(*msg)));
     if(!*msg){
       break;
     }
@@ -234,28 +247,42 @@ void tinsel_puts(const char *msg){
   }
 }
 
+void tinsel_puts_abc(){
+  uint32_t prefix=tinselId()<<8;
+  tinselHostPut(prefix | 1);
+  tinselHostPut(prefix | 'A');
+  tinselHostPut(prefix | 'B');
+  tinselHostPut(prefix | 'C');
+  tinselHostPut(prefix | '\n');
+  tinselHostPut(prefix | 0);
+}
+
 
 extern "C" void softswitch_handler_log_key_value(uint32_t key, uint32_t value)
 {
-  uint32_t prefix=tinselId()<<16;
+  uint32_t prefix=tinselId()<<8;
 
-  tinselHostPut(prefix | 0x1); // Magic value for key value pair
-  tinselHostPut(prefix | (key&0xFFFF));
-  tinselHostPut(prefix | (key>>16));
-  tinselHostPut(prefix | (value&0xFFFF));
-  tinselHostPut(prefix | (value>>16));
+  tinselHostPut(prefix | 0x10); // Magic value for key value pair
+  tinselHostPut(prefix | ((key>>0)&0xFF));
+  tinselHostPut(prefix | ((key>>8)&0xFF));
+  tinselHostPut(prefix | ((key>>16)&0xFF));
+  tinselHostPut(prefix | ((key>>24)&0xFF));
+  tinselHostPut(prefix | ((value>>0)&0xFF));
+  tinselHostPut(prefix | ((value>>8)&0xFF));
+  tinselHostPut(prefix | ((value>>16)&0xFF));
+  tinselHostPut(prefix | ((value>>24)&0xFF));
 }
 
 extern "C" void __assert_func (const char *file, int line, const char *assertFunc,const char *cond)
 {
-  uint32_t prefix=tinselId()<<16;
+  uint32_t prefix=tinselId()<<8;
 
-  tinselHostPut(prefix | 0xFFFE); // Code for an assert
+  tinselHostPut(prefix | 0xFE); // Code for an assert
   tinsel_mboxWaitUntil((tinsel_WakeupCond)0);
   while(1);
 }
 
 int main()
 {
-  softswitch_main();  
+  softswitch_main();
 }

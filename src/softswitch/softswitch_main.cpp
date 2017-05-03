@@ -23,7 +23,11 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
 
 static PThreadContext *softswitch_getContext()
 {
+  if(tinsel_myId() < softswitch_pthread_count){
     return softswitch_pthread_contexts + tinsel_myId();
+  }else{
+    return 0;
+  }
 }
 
 #ifndef POETS_DISABLE_LOGGING
@@ -113,13 +117,18 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
 
 
 extern "C" void softswitch_main()
-{
+{ 
     PThreadContext *ctxt=softswitch_getContext();
+    if(ctxt==0){
+      //tinsel_puts("softswitch_main - no thread\n");
+      while(1);
+    }
+    
     
     softswitch_softswitch_log(1, "softswitch_main()");
     softswitch_init(ctxt);
     
-    
+    tinsel_puts("post init\n");
     
     // We'll hold onto this one
     volatile void *sendBuffer=tinsel_mboxSlot(0);

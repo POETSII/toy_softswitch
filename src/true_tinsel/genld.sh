@@ -10,7 +10,7 @@ while read -r EXPORT; do
 done <<< `python ${POETS_TINSEL_ROOT}/config.py envs`
 
 # Compute space available for instructions
-MaxInstrBytes=60000 #$((4 * 2**$LogInstrsPerCore - $MaxBootImageBytes))
+MaxInstrBytes=$((4 * 2**$LogInstrsPerCore - $MaxBootImageBytes))
 
 cat - << EOF
 /* THIS FILE HAS BEEN GENERATED AUTOMATICALLY. */
