@@ -5,6 +5,7 @@
 #include <cassert>
 
 // Some kind of address. Just made this up.
+#pragma pack(push,1)
 struct address_t
 {
     // Working round bug in gcc before gcc5.
@@ -23,6 +24,7 @@ struct address_t
     uint8_t port;       // software
     uint8_t flag; //=0; // software
 };
+#pragma pack(pop)
 
 // A packet. This probably mixes hardware and
 // software routing.
@@ -104,8 +106,8 @@ struct OutputPortTargets
 struct InputPortBinding
 {
     address_t source;
-    const void *edgeProperties;
-    void *edgeState;
+    const void *edgeProperties; // On startup this is zero or a byte offset in global properties array
+    void *edgeState;            // On startup this is zero or a byte offset into global state array
 };
 
 // Allows us to bind incoming messages to the appropriate edge properties
@@ -220,6 +222,12 @@ extern "C" unsigned softswitch_pthread_count;
 /*! Bit of a hack, as it means every thread has a copy
     of the whole thing. */
 extern "C" PThreadContext softswitch_pthread_contexts[];
+
+//! Array of all property BLOBs used in the program (graph, device, edge)
+extern "C" uint8_t softswitch_pthread_global_properties[];
+
+//! Array of all state BLOBs used in the program (device, edge)
+extern "C" uint8_t softswitch_pthread_global_state[];
 
 extern "C" void softswitch_main();
 

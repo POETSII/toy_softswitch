@@ -40,7 +40,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
     if(port->propertiesSize | port->stateSize){
         // We have to look up the edge info associated with this edge
         
-        softswitch_softswitch_log(4, "softswitch_onReceive / finding edge info, src=%08x:%04x:%02x, msg.laport=%u", packet->source.thread, packet->source.device, packet->source.port, packet->lamport);
+        softswitch_softswitch_log(4, "softswitch_onReceive / finding edge info, src=%08x:%04x:%02x, msg.laport=%u, propSize=%u, stateSize=%u", packet->source.thread, packet->source.device, packet->source.port, packet->lamport, port->propertiesSize , port->stateSize);
     
         
         const InputPortBinding *begin=dev->sources[portIndex].sourceBindings;
@@ -55,7 +55,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
             return a.source.port < b.port;
         });
         if(edge==end || edge->source.thread != packet->source.thread || edge->source.device != packet->source.device || edge->source.port != packet->source.port){
-            softswitch_softswitch_log(0, "softswitch_onReceive / no edge found for packet : dst=%08x:%04x:%02x, src=%08x:%04x:%02x", packet->dest.thread, packet->dest.device, packet->dest.port, packet->source.thread, packet->source.device, packet->source.port);
+            softswitch_softswitch_log(0, "softswitch_onReceive / no edge found for packet : dst=%08x:%04x:%02x=%s, src=%08x:%04x:%02x", packet->dest.thread, packet->dest.device, packet->dest.port, dev->id, packet->source.thread, packet->source.device, packet->source.port);
             auto tmp=begin;
             while(tmp!=end){
                 softswitch_softswitch_log(0, "softswitch_onReceive / possible src=%08x:%04x:%02x", tmp->source.thread, tmp->source.device, tmp->source.port);
