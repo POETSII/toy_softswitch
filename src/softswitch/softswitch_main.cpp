@@ -199,23 +199,27 @@ extern "C" void softswitch_main()
                 // We still have more addresses to deliver the last message to
                 softswitch_softswitch_log(3, "forwarding current message");
             }
-
-            softswitch_softswitch_log(3, "sending to thread %08x, device %u, port %u", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->port);
             
-            // Update the target address (including the device and pin)
-            ((packet_t*)sendBuffer)->dest = *currSendAddressList;
+            if(currSendTodo>0){
+                assert(currSendAddressList);
+                
+                softswitch_softswitch_log(3, "sending to thread %08x, device %u, port %u", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->port);
+                
+                // Update the target address (including the device and pin)
+                ((packet_t*)sendBuffer)->dest = *currSendAddressList;
 
-            // Send to the relevant thread
-            // TODO: Shouldn't there be something like mboxForward as part of
-            // the API, which only takes the address?
-            softswitch_softswitch_log(4, "setting length");
-            tinsel_mboxSetLen(currSize);
-            softswitch_softswitch_log(4, "doing send");
-            tinsel_mboxSend(currSendAddressList->thread, sendBuffer);
+                // Send to the relevant thread
+                // TODO: Shouldn't there be something like mboxForward as part of
+                // the API, which only takes the address?
+                softswitch_softswitch_log(4, "setting length");
+                tinsel_mboxSetLen(currSize);
+                softswitch_softswitch_log(4, "doing send");
+                tinsel_mboxSend(currSendAddressList->thread, sendBuffer);
 
-            // Move onto next address for next time
-            currSendTodo--; // If this reaches zero, we are done with the message
-            currSendAddressList++;
+                // Move onto next address for next time
+                currSendTodo--; // If this reaches zero, we are done with the message
+                currSendAddressList++;
+            }
         }
         
         softswitch_softswitch_log(3, "loop bottom");

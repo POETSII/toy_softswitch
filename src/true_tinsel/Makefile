@@ -10,7 +10,7 @@ TINSEL_INC=${POETS_TINSEL_ROOT}
 
 DESIGN=true_tinsel
 
-APPLICATION ?= ../../generated/apps/clock_tree_2_2_threads16
+APPLICATION ?= ../../generated/apps/clock_tree_8_2_threads16
 
 include $(TINSEL_ROOT)/globals.mk
 
@@ -19,6 +19,7 @@ RV_CXX = riscv64-unknown-elf-g++
 # Local compiler flags
 CFLAGS = $(RV_CFLAGS) -O3 -I $(INC)  -DNDEBUG=1  -Wno-unused-variable -Wno-unused-local-typedefs
 CFLAGS += -DPOETS_DISABLE_LOGGING=1 
+
 #LDFLAGS = -melf32lriscv -G 0 
 LDFLAGS = -Wl,-melf32lriscv -Wl,--gpsize=0  -Wl,-Bstatic
 
