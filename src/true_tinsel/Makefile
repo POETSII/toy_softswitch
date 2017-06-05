@@ -18,7 +18,7 @@ RV_CXX = riscv64-unknown-elf-g++
 
 # Local compiler flags
 CFLAGS = $(RV_CFLAGS) -O3 -I $(INC)  -DNDEBUG=1  -Wno-unused-variable -Wno-unused-local-typedefs
-CFLAGS += -DPOETS_DISABLE_LOGGING=1 
+#CFLAGS += -DPOETS_DISABLE_LOGGING=1 
 #LDFLAGS = -melf32lriscv -G 0 
 LDFLAGS = -Wl,-melf32lriscv -Wl,--gpsize=0  -Wl,-Bstatic
 
