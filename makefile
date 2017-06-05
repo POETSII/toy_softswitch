@@ -1,6 +1,8 @@
 
 CXXFLAGS += -g -std=c++11 -W -Wall -I include -pthread -Wno-unused-parameter
 
+CXXFLAGS += -fsanitize=undefined -fno-sanitize-recover
+
 lib/tinsel_mpi.a : src/tinsel/tinsel_on_mpi.cpp src/tinsel/tinsel_mbox.hpp
 	mpicxx $(CXXFLAGS) -c -o src/tinsel/tinsel_on_mpi.o src/tinsel/tinsel_on_mpi.cpp
 	mkdir -p lib
@@ -65,7 +67,7 @@ ALL_LIBS := $(ALL_GENERATED_LIBS) $(ALL_MANUAL_LIBS)
 
 bin/run_unix_% : lib/tinsel_unix.a lib/softswitch.a lib/%.a
 	mkdir -p bin
-	$(CXX) -pthread -std=c++11 -W -Wall -o $@  $^
+	$(CXX) -pthread -std=c++11 -W -Wall -o $@  $^ -fsanitize=undefined -fno-sanitize-recover
 
 bin/run_mpi_% : lib/tinsel_mpi.a lib/softswitch.a lib/%.a
 	mkdir -p bin

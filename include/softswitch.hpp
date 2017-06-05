@@ -5,6 +5,7 @@
 #include <cassert>
 
 // Some kind of address. Just made this up.
+#pragma pack(push,1)
 struct address_t
 {
     // Working round bug in gcc before gcc5.
@@ -23,6 +24,7 @@ struct address_t
     uint8_t port;       // software
     uint8_t flag; //=0; // software
 };
+#pragma pack(pop)
 
 // A packet. This probably mixes hardware and
 // software routing.
@@ -98,14 +100,14 @@ struct DeviceTypeVTable
 struct OutputPortTargets
 {
     unsigned numTargets;
-    address_t *targets;
+    address_t *targets; 
 };
 
 struct InputPortBinding
 {
     address_t source;
-    const void *edgeProperties;
-    void *edgeState;
+    const void *edgeProperties; // On startup this is zero or a byte offset in global properties array
+    void *edgeState;            // On startup this is zero or a byte offset into global state array
 };
 
 // Allows us to bind incoming messages to the appropriate edge properties
@@ -176,6 +178,16 @@ struct PThreadContext
     uint32_t currentDevice; 
     int currentHandlerType;   // 0 = None, 1 = Recv, 2 = Send
     uint32_t currentPort; // Index of the port (for recv and send)
+    
+    // If true, then the softswitch must go through and turn relative
+    // pointers during init. All relevant pointers should only be read/written
+    // by this thread, so it should be possible to do it on a per-thread basis.
+    // Things to patch are:
+    // - deviceProperties -> softswitch_pthread_global_properties+(uintptr_t)deviceProperties
+    // - deviceState -> softswitch_pthread_global_state+(uintptr_t)deviceState
+    // - edgeProperties -> softswitch_pthread_global_properties+(uintptr_t)edgeProperties
+    // - edgeState -> softswitch_pthread_global_state+(uintptr_t)edgeState
+    int pointersAreRelative;
 };
 
 extern "C" void softswitch_UpdateRTS(
@@ -220,6 +232,17 @@ extern "C" unsigned softswitch_pthread_count;
 /*! Bit of a hack, as it means every thread has a copy
     of the whole thing. */
 extern "C" PThreadContext softswitch_pthread_contexts[];
+
+extern "C" DeviceTypeVTable softswitch_device_vtables[];
+
+//! Array of all property BLOBs used in the program (graph, device, edge)
+extern "C" uint8_t softswitch_pthread_global_properties[];
+
+//! Array of all state BLOBs used in the program (device, edge)
+extern "C" uint8_t softswitch_pthread_global_state[];
+
+//! Array of all output port (len,pAddress) pairs
+extern "C" OutputPortTargets softswitch_pthread_output_port_targets[];
 
 extern "C" void softswitch_main();
 

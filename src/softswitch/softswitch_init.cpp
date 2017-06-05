@@ -9,6 +9,30 @@ extern "C" void softswitch_init(PThreadContext *ctxt)
   tinsel_puts("softswitch_init\n");
   
     softswitch_softswitch_log(2, "softswitch_init : begin");
+  
+  if(ctxt->pointersAreRelative){
+    softswitch_softswitch_log(2, "softswitch_init : converting pointers from absolute to relative");
+    for(unsigned i=0; i<ctxt->numDevices;i++){
+      DeviceContext *dev=ctxt->devices+i;
+      if(dev->properties!=0){
+        dev->properties=softswitch_pthread_global_properties+(uintptr_t)dev->properties;
+      }
+      if(dev->state!=0){
+        dev->state=softswitch_pthread_global_state+(uintptr_t)dev->state;
+      }
+      
+      dev->vtable = softswitch_device_vtables+(uintptr_t)dev->vtable;
+      
+      DeviceTypeVTable *devVtable=dev->vtable;
+      for(unsigned j=0; j<devVtable->numOutputs; j++){
+        OutputPortTargets *target=dev->targets+j;
+        target->targets = (address_t*)( softswitch_pthread_global_properties + (uintptr_t)target->targets );
+      }
+    }
+    softswitch_softswitch_log(2, "softswitch_init : conversion done");
+  }
+  
+  
     
     ctxt->rtsHead=0;
     ctxt->rtsTail=0;

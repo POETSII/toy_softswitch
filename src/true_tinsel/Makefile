@@ -10,7 +10,7 @@ TINSEL_INC=${POETS_TINSEL_ROOT}
 
 DESIGN=true_tinsel
 
-APPLICATION ?= ../../generated/apps/clock_tree_2_2_threads16
+APPLICATION ?= ../../generated/apps/clock_tree_8_2_threads16
 
 include $(TINSEL_ROOT)/globals.mk
 
