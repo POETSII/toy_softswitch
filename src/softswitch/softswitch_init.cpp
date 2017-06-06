@@ -9,7 +9,9 @@ extern "C" void softswitch_init(PThreadContext *ctxt)
   tinsel_puts("softswitch_init\n");
   
     softswitch_softswitch_log(2, "softswitch_init : begin");
-  
+
+    assert(!ctxt->pointersAreRelative);
+    /*
   if(ctxt->pointersAreRelative){
     softswitch_softswitch_log(2, "softswitch_init : converting pointers from absolute to relative");
     for(unsigned i=0; i<ctxt->numDevices;i++){
@@ -31,6 +33,7 @@ extern "C" void softswitch_init(PThreadContext *ctxt)
     }
     softswitch_softswitch_log(2, "softswitch_init : conversion done");
   }
+    */
   
   
     
@@ -45,11 +48,13 @@ extern "C" void softswitch_init(PThreadContext *ctxt)
         DeviceContext *dev=ctxt->devices+i;
         DeviceTypeVTable *vtable=dev->vtable;
 
+	/*
 	if(vtable->numInputs){
 	  tinsel_puts("softswitch_init - have input ports\n");
 	}else{
 	  tinsel_puts("softswitch_init - no input ports\n");
 	}
+	*/
         
         softswitch_softswitch_log(4, "softswitch_init : looking for init handler for %s.", dev->id);
         for(unsigned pi=0; pi<vtable->numInputs; pi++){

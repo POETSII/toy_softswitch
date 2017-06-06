@@ -23,9 +23,7 @@ static unsigned right_most_one(uint32_t x)
     \retval Size of message in bytes
 */
 extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets)
-{
-  tinsel_puts("onSend\n");
-  
+{ 
     softswitch_softswitch_log(3, "softswitch_onSend : begin");    
     
     numTargets=0;

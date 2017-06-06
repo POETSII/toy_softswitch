@@ -199,11 +199,14 @@ extern "C" DeviceContext *softswitch_PopRTS(PThreadContext *pCtxt);
 extern "C" bool softswitch_IsRTSReady(PThreadContext *pCtxt);
 
 
+#ifndef POETS_MAX_LOGGING_LEVEL
+#define POETS_MAX_LOGGING_LEVEL 10
+#endif
 
 //! Allows logging from within a device handler
 #ifndef POETS_DISABLE_LOGGING
 #define softswitch_handler_log(level, ...) \
-    softswitch_handler_log_impl(level, __VA_ARGS__)
+  if(level <= POETS_MAX_LOGGING_LEVEL){ softswitch_handler_log_impl(level, __VA_ARGS__); }
 #else
 #define softswitch_handler_log(level, ...) \
     ((void)0)
@@ -213,7 +216,7 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...);
 //! Allows logging from within the softswitch
 #ifndef POETS_DISABLE_LOGGING
 #define softswitch_softswitch_log(level, ...) \
-    softswitch_softswitch_log_impl(level, __VA_ARGS__)
+  if(level <= POETS_MAX_LOGGING_LEVEL){ softswitch_softswitch_log_impl(level, __VA_ARGS__); }
 #else
 #define softswitch_softswitch_log(level, ...) \
     ((void)0)

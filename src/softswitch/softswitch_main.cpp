@@ -35,12 +35,11 @@ static PThreadContext *softswitch_getContext()
 static void append_vprintf(int &left, char *&dst, const char *msg, va_list v)
 {
     int done=vsnprintf(dst, left, msg, v);
-    
-    if(done>0){
-        assert(done<=left);
-        left-=done;
-        dst+=done;
+    if(done>=left){
+      done=left-1;
     }
+    dst+=done;
+    left-=done;
 }
 
 static void append_printf(int &left, char *&dst, const char *msg, ...)
@@ -59,7 +58,7 @@ extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
     if(level > ctxt->softLogLevel)
         return;
     
-    char buffer[200]={};
+    char buffer[256]={0};
     int left=sizeof(buffer)-3;
     char *dst=buffer;
 
@@ -85,7 +84,7 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
     if(level > ctxt->applLogLevel)
         return;
 
-    char buffer[200]={};
+    char buffer[256]={0};
     int left=sizeof(buffer)-3;
     char *dst=buffer;
     
@@ -127,8 +126,6 @@ extern "C" void softswitch_main()
     
     softswitch_softswitch_log(1, "softswitch_main()");
     softswitch_init(ctxt);
-    
-    tinsel_puts("post init\n");
     
     // We'll hold onto this one
     volatile void *sendBuffer=tinsel_mboxSlot(0);

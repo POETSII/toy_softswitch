@@ -7,9 +7,7 @@ extern "C" void tinsel_puts(const char *);
 
 //! Deal with the incoming message
 extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
-{
-  tinsel_puts("onReceive\n");
-  
+{ 
     const packet_t *packet=(const packet_t*)message;
     
     assert(packet); // Anything arriving via this route must have been a real packet (no init message via this route)
