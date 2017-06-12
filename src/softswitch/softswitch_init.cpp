@@ -23,17 +23,28 @@ extern "C" void softswitch_init(PThreadContext *ctxt)
         dev->state=softswitch_pthread_global_state+(uintptr_t)dev->state;
       }
       
-      dev->vtable = softswitch_device_vtables+(uintptr_t)dev->vtable;
+      dev->vtable = (DeviceTypeVTable*)softswitch_device_vtables+(uintptr_t)dev->vtable;
       
-      DeviceTypeVTable *devVtable=dev->vtable;
+      const DeviceTypeVTable *devVtable=dev->vtable;
       for(unsigned j=0; j<devVtable->numOutputs; j++){
-        OutputPortTargets *target=dev->targets+j;
+        OutputPortTargets *target=(OutputPortTargets*)dev->targets+j;
         target->targets = (address_t*)( softswitch_pthread_global_properties + (uintptr_t)target->targets );
+      }
+      for(unsigned j=0; j<devVtable->numInputs; j++){
+        InputPortSources *sources=(InputPortSources*)dev->sources+j;
+        if(sources->sourceBindings){
+          for(unsigned k=0; k<sources->numSources; k++){
+            InputPortBinding *binding=(InputPortBinding*)sources->sourceBindings+k;
+            if(binding->edgeProperties){
+              binding->edgeProperties=softswitch_pthread_global_properties+(uintptr_t)binding->edgeProperties;
+            }
+          }
+        }
       }
     }
     softswitch_softswitch_log(2, "softswitch_init : conversion done");
   }
-    */
+  */
   
   
     
@@ -46,7 +57,7 @@ extern "C" void softswitch_init(PThreadContext *ctxt)
         // Changed: now we do init here (previously we assumed it was done elsewhere
         
         DeviceContext *dev=ctxt->devices+i;
-        DeviceTypeVTable *vtable=dev->vtable;
+        const DeviceTypeVTable *vtable=dev->vtable;
 
 	/*
 	if(vtable->numInputs){
@@ -60,7 +71,7 @@ extern "C" void softswitch_init(PThreadContext *ctxt)
         for(unsigned pi=0; pi<vtable->numInputs; pi++){
 	  tinsel_puts("softswitch_init - looking for init\n");
 	  
-            InputPortVTable *port=vtable->inputPorts+pi;
+            const InputPortVTable *port=vtable->inputPorts+pi;
 	    
             if(!strcmp(port->name,"__init__")){
 	      tinsel_puts("softswitch_init - found init\n");

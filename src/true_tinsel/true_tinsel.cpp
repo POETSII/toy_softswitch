@@ -291,6 +291,13 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
 
   Assertion (with no further information):
   IIIIIIFE  // Magic number for assertion
+  
+  Exit:
+  IIIIIIFF  // Magic number for exit
+  IIIIIIVV  // 8-bits of value (LSB)
+  IIIIIIVV  // 8-bits of value
+  IIIIIIVV  // 8-bits of value
+  IIIIIIVV  // 8-bits of value (MSB)
 
   Pair of 32-bit values from a device
   IIIIII10  // Magic number
@@ -323,14 +330,28 @@ extern "C" void tinsel_puts(const char *msg){
   }
 }
 
-extern "C" void softswitch_handler_log_key_value(uint32_t key, uint32_t value)
+extern "C" void softswitch_handler_exit(int code)
 {
-  return;
-  
   uint32_t prefix=tinselId()<<8;
 
-  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
-  DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
+  const PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
+  
+  tinselHostPut(prefix | 0xFF); // Magic value for key value pair
+  
+  uint32_t key=uint32_t(code);
+  tinselHostPut(prefix | ((key>>0)&0xFF));
+  tinselHostPut(prefix | ((key>>8)&0xFF));
+  tinselHostPut(prefix | ((key>>16)&0xFF));
+  tinselHostPut(prefix | ((key>>24)&0xFF));
+}
+
+extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value)
+{ 
+  uint32_t prefix=tinselId()<<8;
+
+  const PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
 
   tinselHostPut(prefix | 0x10); // Magic value for key value pair
   const char *tmp=dev->id;

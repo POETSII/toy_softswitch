@@ -1,40 +1,34 @@
 #ifndef softswitch_hpp
 #define softswitch_hpp
 
-#include <cstdint>
-#include <cassert>
+#include <stdint.h>
+#include <assert.h>
+#include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C"{
+#endif
 
 // Some kind of address. Just made this up.
 #pragma pack(push,1)
-struct address_t
+typedef struct _address_t
 {
-    // Working round bug in gcc before gcc5.
-    // Previously default aggregate init was used, but that doesn't allow
-    // default init of _flag to 0.
-    // Added constructor to get the init.
-    address_t(uint32_t _thread, uint16_t _device, uint8_t _port, uint8_t _flag=0)
-        : thread(_thread)
-        , device(_device)
-        , port(_port)
-        , flag(_flag)
-    {}
-    
     uint32_t thread;    // hardware
     uint16_t device;    // softare
     uint8_t port;       // software
     uint8_t flag; //=0; // software
-};
+}address_t;
 #pragma pack(pop)
 
 // A packet. This probably mixes hardware and
 // software routing.
-struct packet_t
+typedef struct _packet_t
 {
     address_t dest;
     address_t source;
     uint32_t lamport; // lamport clock
     uint8_t payload[];
-};
+}packet_t;
 
 typedef uint32_t (*ready_to_send_handler_t)(
     const void *graphProps,
@@ -64,7 +58,7 @@ typedef void (*compute_handler_t)(
     void *devState
 );
 
-struct InputPortVTable
+typedef struct _InputPortVTable
 {
     receive_handler_t receiveHandler;
     unsigned messageSize;
@@ -73,79 +67,79 @@ struct InputPortVTable
     uint16_t propertiesSize;
     uint16_t stateSize;
     const char *name;
-};
+}InputPortVTable;
 
-struct OutputPortVTable
+typedef struct _OutputPortVTable
 {
     send_handler_t sendHandler;
     unsigned messageSize;
     const char *name;
-};
+}OutputPortVTable;
 
 // Gives access to the code associated with each device
-struct DeviceTypeVTable
+typedef struct _DeviceTypeVTable
 {
     ready_to_send_handler_t readyToSendHandler;
     unsigned numOutputs;
-    OutputPortVTable *outputPorts;
+    const OutputPortVTable *outputPorts;
     unsigned numInputs;
-    InputPortVTable *inputPorts;
+    const InputPortVTable *inputPorts;
     compute_handler_t computeHandler;
     const char *id; // Unique id of the device type
-};
+}DeviceTypeVTable;
 
 // Gives the distribution list when sending from a particular port
 // Read-only. This is likely to be unique to each port, but it may be possible
 // to share.
-struct OutputPortTargets
+typedef struct _OutputPortTargets
 {
     unsigned numTargets;
     address_t *targets; 
-};
+}OutputPortTargets;
 
-struct InputPortBinding
+typedef struct _InputPortBinding
 {
     address_t source;
     const void *edgeProperties; // On startup this is zero or a byte offset in global properties array
     void *edgeState;            // On startup this is zero or a byte offset into global state array
-};
+}InputPortBinding;
 
 // Allows us to bind incoming messages to the appropriate edge properties
 /* The properties will be stored in order of address then port. This would
    be much better done by a hash-table or something. Or possibly embedding
     the destination properties into the message?
 */
-struct InputPortSources
+typedef struct _InputPortSources
 {
     unsigned numSources;  // This will be null if the input has properties/state
-    InputPortBinding *sourceBindings; // This will be null if the input had no properties or state
-};
+    const InputPortBinding *sourceBindings; // This will be null if the input had no properties or state
+}InputPortSources;
 
 //! Context is fixed size. Points to varying size properties and state
-struct DeviceContext
+typedef struct _DeviceContext
 {
     // These parts are fixed, and will never change
-    DeviceTypeVTable *vtable;
+    const DeviceTypeVTable *vtable;
     const void *properties;
     void *state;
     unsigned index;
-    OutputPortTargets *targets;  // One entry per output port
-    InputPortSources *sources;   // One entry per input port
+    const OutputPortTargets *targets;  // One entry per output port
+    const InputPortSources *sources;   // One entry per input port
     const char *id;              // unique id of the device
 
     uint32_t rtsFlags;
     bool rtc;
 
-    DeviceContext *prev;
-    DeviceContext *next;
-};
+    struct _DeviceContext *prev;
+    struct _DeviceContext *next;
+}DeviceContext;
 
 /*! Contains information about what this thread is managing.
     Some parts are read-only and can be shared (e.g. device vtables, graph properties)
     Other parts are read-only but probably not shared (device properties, address lists)
     Some parts are read-write, and so must be private (e.g. the devices array, rtsHead, ...)
 */
-struct PThreadContext
+typedef struct _PThreadContext
 {
     // Read-only parts
 
@@ -155,7 +149,7 @@ struct PThreadContext
 
 
     unsigned numVTables;      // Number of distinct device types available
-    DeviceTypeVTable *vtables; // VTable structure for each device type (read-only, could be shared with other pthread contexts)
+    const DeviceTypeVTable *vtables; // VTable structure for each device type (read-only, could be shared with other pthread contexts)
 
     unsigned numDevices;    // Number of devices this thread is managing
     DeviceContext *devices; // Fixed-size contexs for each device (must be private to thread)
@@ -188,15 +182,15 @@ struct PThreadContext
     // - edgeProperties -> softswitch_pthread_global_properties+(uintptr_t)edgeProperties
     // - edgeState -> softswitch_pthread_global_state+(uintptr_t)edgeState
     int pointersAreRelative;
-};
+}PThreadContext;
 
-extern "C" void softswitch_UpdateRTS(
+void softswitch_UpdateRTS(
     PThreadContext *pCtxt, DeviceContext *dCtxt
 );
 
-extern "C" DeviceContext *softswitch_PopRTS(PThreadContext *pCtxt);
+DeviceContext *softswitch_PopRTS(PThreadContext *pCtxt);
 
-extern "C" bool softswitch_IsRTSReady(PThreadContext *pCtxt);
+bool softswitch_IsRTSReady(PThreadContext *pCtxt);
 
 
 #ifndef POETS_MAX_LOGGING_LEVEL
@@ -211,7 +205,10 @@ extern "C" bool softswitch_IsRTSReady(PThreadContext *pCtxt);
 #define softswitch_handler_log(level, ...) \
     ((void)0)
 #endif
-extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...);
+void softswitch_handler_log_impl(int level, const char *msg, ...);
+
+//! Used by a device to indicate everything is finished
+void softswitch_handler_exit(int code);
 
 //! Allows logging from within the softswitch
 #ifndef POETS_DISABLE_LOGGING
@@ -221,33 +218,36 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...);
 #define softswitch_softswitch_log(level, ...) \
     ((void)0)
 #endif
-extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...);
+void softswitch_softswitch_log_impl(int level, const char *msg, ...);
 
 
 // Send a key-value pair back to the host.
-extern "C" void softswitch_handler_log_key_value(uint32_t key, uint32_t value);
+void softswitch_handler_export_key_value(uint32_t key, uint32_t value);
 
 
 //! Gives the total number of threads in the application
-extern "C" unsigned softswitch_pthread_count;
+extern unsigned softswitch_pthread_count;
 
 //! An array of softswitch_pthread_count entries
 /*! Bit of a hack, as it means every thread has a copy
     of the whole thing. */
-extern "C" PThreadContext softswitch_pthread_contexts[];
+extern PThreadContext softswitch_pthread_contexts[];
 
-extern "C" DeviceTypeVTable softswitch_device_vtables[];
+extern const DeviceTypeVTable softswitch_device_vtables[];
 
 //! Array of all property BLOBs used in the program (graph, device, edge)
-extern "C" uint8_t softswitch_pthread_global_properties[];
+extern const uint8_t softswitch_pthread_global_properties[];
 
 //! Array of all state BLOBs used in the program (device, edge)
-extern "C" uint8_t softswitch_pthread_global_state[];
+extern uint8_t softswitch_pthread_global_state[];
 
 //! Array of all output port (len,pAddress) pairs
-extern "C" OutputPortTargets softswitch_pthread_output_port_targets[];
+extern const OutputPortTargets softswitch_pthread_output_port_targets[];
 
-extern "C" void softswitch_main();
+void softswitch_main();
 
+#ifdef __cplusplus
+};
+#endif
 
 #endif

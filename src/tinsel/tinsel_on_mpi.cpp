@@ -63,6 +63,12 @@ void tinsel_puts(const char *msg)
 }
 
 
+extern "C" void softswitch_handler_exit(int code)
+{
+    fprintf(stderr, "Handler exit : code=%d\n", code);
+    exit(code);
+}
+
 
 void mbox_thread(uint32_t threadId, int hardLogLevel)
 {
@@ -194,12 +200,12 @@ int main(int argc, char *argv[])
 
         if(mpiSize < softswitch_pthread_count){
             if(mpiRank==0){
-                fprintf(stderr, "Error : MPI world size too small. Need at least %u for this application\n", softswitch_pthread_count);
+                fprintf(stderr, "Error : MPI world size of %u too small. Need at least %u for this application\n", mpiSize, softswitch_pthread_count);
             }
             MPI_Finalize();
             exit(1);
         }        
-        if(mpiSize < softswitch_pthread_count){
+        if(mpiSize > softswitch_pthread_count){
             if(mpiRank==0){
                 fprintf(stderr, "Warning : MPI world size too large. Only need %u for this application\n", softswitch_pthread_count);
             }

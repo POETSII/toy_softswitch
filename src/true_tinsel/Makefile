@@ -10,16 +10,19 @@ TINSEL_INC=${POETS_TINSEL_ROOT}
 
 DESIGN=true_tinsel
 
-APPLICATION ?= ../../generated/apps/clock_tree_8_3_threads512
+APPLICATION ?= ../../generated/apps/gals_heat_fix_9_threads4
 
 include $(TINSEL_ROOT)/globals.mk
 
 RV_CXX = riscv64-unknown-elf-g++
 
 # Local compiler flags
-CFLAGS = $(RV_CFLAGS) -O3 -I $(INC)  -DNDEBUG=1  -Wno-unused-variable -Wno-unused-local-typedefs
+CFLAGS = $(RV_CFLAGS)  -I $(INC) -Os  -DNDEBUG=1  -Wno-unused-variable -Wno-unused-local-typedefs
+CFLAGS += -fomit-frame-pointer
+CFLAGS += -fno-default-inline
 #CFLAGS += -DPOETS_DISABLE_LOGGING=1
-CFLAGS += -DPOETS_MAX_LOGGING_LEVEL=3
+CFLAGS += -DPOETS_MAX_LOGGING_LEVEL=4
+CFLAGS += -fno-zero-initialized-in-bss
 #LDFLAGS = -melf32lriscv -G 0 
 LDFLAGS = -Wl,-melf32lriscv -Wl,--gpsize=0  -Wl,-Bstatic
 
@@ -38,7 +41,7 @@ data.v: ${DESIGN}.elf
 SOFTSWITCH_SRCS = $(wildcard $(TOY_SOFTSWITCH_ROOT)/src/softswitch/*.cpp)
 SOFTSWITCH_OBJS = $(subst .cpp,.riscv.o,$(SOFTSWITCH_SRCS))
 
-APPLICATION_SRCS = $(wildcard $(APPLICATION)/*.cpp)
+APPLICATION_SRCS = $(wildcard $(APPLICATION)/*.cpp) $(wildcard $(APPLICATION)/*.c)
 APPLICATION_OBJS = $(subst .cpp,.riscv.o,$(APPLICATION_SRCS))
 
 %.riscv.o : %.cpp $(INC)/config.h $(INC)/tinsel.h

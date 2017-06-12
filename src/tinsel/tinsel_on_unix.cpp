@@ -65,6 +65,13 @@ void tinsel_puts(const char *msg)
 }
 
 
+extern "C" void softswitch_handler_exit(int code)
+{
+    fprintf(stderr, "Handler exit : code=%d\n", code);
+    exit(code);
+}
+
+
 void mbox_thread(const char *socketDir, uint32_t threadId, int logLevel)
 {
     char addrTemplate[128];
