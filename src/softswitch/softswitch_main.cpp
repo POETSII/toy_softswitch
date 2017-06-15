@@ -74,7 +74,6 @@ extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
     tinsel_puts(buffer);
 }
 
-
 extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
 {
     PThreadContext *ctxt=softswitch_getContext();
@@ -208,7 +207,7 @@ extern "C" void softswitch_main()
                 // Send to the relevant thread
                 // TODO: Shouldn't there be something like mboxForward as part of
                 // the API, which only takes the address?
-                softswitch_softswitch_log(4, "setting length");
+                softswitch_softswitch_log(4, "setting length to %u", currSize);
                 tinsel_mboxSetLen(currSize);
                 softswitch_softswitch_log(4, "doing send");
                 tinsel_mboxSend(currSendAddressList->thread, sendBuffer);

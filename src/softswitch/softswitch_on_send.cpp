@@ -52,30 +52,40 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     ctxt->currentHandlerType=2;
     ctxt->currentPort=portIndex;
 
+    char *payload=(char*)((packet_t*)message+1);
+
     bool doSend=handler(
         ctxt->graphProps,
         dev->properties, 
         dev->state,
-        ((packet_t*)message)->payload
+	payload
     );
 
     ctxt->currentHandlerType=0;
     
-    softswitch_softswitch_log(4, "softswitch_onSend : application handler done, doSend=%d", doSend?1:0);    
+    softswitch_softswitch_log(4, "softswitch_onSend : application handler done, doSend=%d", doSend?1:0);
 
-    
+    uint32_t messageSize=vtable->outputPorts[portIndex].messageSize;
+
     if(doSend){
         numTargets=dev->targets[portIndex].numTargets;
         pTargets=dev->targets[portIndex].targets;
         ((packet_t*)message)->source.thread=ctxt->threadId;
         ((packet_t*)message)->source.device=dev->index;
         ((packet_t*)message)->source.port=portIndex;
-        ((packet_t*)message)->lamport=ctxt->lamport;
+        ((packet_t*)message)->size=messageSize;
 
         softswitch_softswitch_log(4, "softswitch_onSend : source = %x:%x:%x", ctxt->threadId, dev->index, portIndex);    
     }
+
+    uint32_t payloadSize=messageSize - sizeof(packet_t);
+    for(uint32_t i=0; i<payloadSize; i++){
+      softswitch_softswitch_log(5, "softswitch_onSend :   payload[%u] = %u", i, (uint8_t)payload[i]);
+    }
     
-    softswitch_softswitch_log(4, "softswitch_onSend : numTargets=%u, pTargets=%p", numTargets, pTargets);    
+
+    
+    softswitch_softswitch_log(4, "softswitch_onSend : messageSize=%u, numTargets=%u, pTargets=%p", messageSize, numTargets, pTargets);    
 
     softswitch_softswitch_log(4, "softswitch_onSend : updating RTS");    
     dev->rtsFlags=0;    // Reflect that it is no longer on the RTC list due to the pop
@@ -85,5 +95,5 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     
     softswitch_softswitch_log(3, "softswitch_onSend : end");    
     
-    return vtable->outputPorts[portIndex].messageSize;
+    return messageSize;
 }

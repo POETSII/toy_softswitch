@@ -10,21 +10,21 @@ TINSEL_INC=${POETS_TINSEL_ROOT}
 
 DESIGN=true_tinsel
 
-APPLICATION ?= ../../generated/apps/gals_heat_fix_9_threads4
+APPLICATION ?= ../../generated/apps/ising_spin_fix_16_2_threads1
 
 include $(TINSEL_ROOT)/globals.mk
 
 RV_CXX = riscv64-unknown-elf-g++
 
 # Local compiler flags
-CFLAGS = $(RV_CFLAGS)  -I $(INC) -Os  -DNDEBUG=1  -Wno-unused-variable -Wno-unused-local-typedefs
+CFLAGS = $(RV_CFLAGS)  -I $(INC) -Os -g -DNDEBUG=1  -Wno-unused-variable -Wno-unused-local-typedefs
 CFLAGS += -fomit-frame-pointer
 CFLAGS += -fno-default-inline
-#CFLAGS += -DPOETS_DISABLE_LOGGING=1
-CFLAGS += -DPOETS_MAX_LOGGING_LEVEL=4
+CFLAGS += -DPOETS_DISABLE_LOGGING=1
+CFLAGS += -DPOETS_MAX_LOGGING_LEVEL=3
 CFLAGS += -fno-zero-initialized-in-bss
 #LDFLAGS = -melf32lriscv -G 0 
-LDFLAGS = -Wl,-melf32lriscv -Wl,--gpsize=0  -Wl,-Bstatic
+LDFLAGS = -Wl,-melf32lriscv  -Wl,--gpsize=0  -Wl,-Bstatic
 
 CFLAGS += -I ${TOY_SOFTSWITCH_ROOT}/include
 

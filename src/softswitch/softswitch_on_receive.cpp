@@ -9,13 +9,21 @@ extern "C" void tinsel_puts(const char *);
 extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
 { 
     const packet_t *packet=(const packet_t*)message;
+    const void *payload=(const char*)(packet+1);
     
     assert(packet); // Anything arriving via this route must have been a real packet (no init message via this route)
 
-    softswitch_softswitch_log(4, "softswitch_onReceive /  dst=%08x:%04x:%02x, src=%08x:%04x:%02x", packet->dest.thread, packet->dest.device, packet->dest.port, packet->source.thread, packet->source.device, packet->source.port);
+    softswitch_softswitch_log(4, "softswitch_onReceive /  dst=%08x:%04x:%02x, src=%08x:%04x:%02x, size=%x", packet->dest.thread, packet->dest.device, packet->dest.port, packet->source.thread, packet->source.device, packet->source.port, packet->size);
+
+    assert( packet->size >= sizeof(packet_t) );
+    softswitch_softswitch_log(5, "softswitch_onReceive /  packet->size=%x, sizeof(packet_t)=%x", packet->size, sizeof(packet_t));
+
+    int payloadSize = packet->size - (int)sizeof(packet_t);
+    assert(payloadSize>=0);
+    for(int i=0; i< payloadSize; i++){
+      softswitch_softswitch_log(5, "softswitch_onReceive /   payload[%u]=%x", i, ((uint8_t*)payload)[i]);
+    }
     
-    
-    ctxt->lamport=std::max(ctxt->lamport,packet->lamport)+1;
     
     // Map to the device and its vtable
     unsigned deviceIndex=packet->dest.device;
@@ -38,27 +46,40 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
     if(port->propertiesSize | port->stateSize){
         // We have to look up the edge info associated with this edge
         
-        softswitch_softswitch_log(4, "softswitch_onReceive / finding edge info, src=%08x:%04x:%02x, msg.laport=%u, propSize=%u, stateSize=%u", packet->source.thread, packet->source.device, packet->source.port, packet->lamport, port->propertiesSize , port->stateSize);
+        softswitch_softswitch_log(4, "softswitch_onReceive / finding edge info, src=%08x:%04x:%02x, propSize=%u, stateSize=%u", packet->source.thread, packet->source.device, packet->source.port, port->propertiesSize , port->stateSize);
     
         
         const InputPortBinding *begin=dev->sources[portIndex].sourceBindings;
         const InputPortBinding *end=dev->sources[portIndex].sourceBindings+dev->sources[portIndex].numSources;
+
+	auto cmpAddress=[](const address_t &a, const address_t &b) -> bool {
+	  if(a.thread < b.thread) return true;
+	  if(a.thread > b.thread) return false;
+	  if(a.device < b.device) return true;
+	  if(a.device > b.device) return false;
+	  return a.port < b.port;
+	};
         
         // This will compile away into pure code, no library stuff
-        auto edge=std::lower_bound(begin, end, packet->source, [](const InputPortBinding &a, const address_t &b){
-            if(a.source.thread < b.thread) return true;
-            if(a.source.thread > b.thread) return false;
-            if(a.source.device < b.device) return true;
-            if(a.source.device > b.device) return false;
-            return a.source.port < b.port;
+        auto edge=std::lower_bound(begin, end, packet->source, [=](const InputPortBinding &a, const address_t &b) -> bool{
+            return cmpAddress(a.source,b);
         });
         if(edge==end || edge->source.thread != packet->source.thread || edge->source.device != packet->source.device || edge->source.port != packet->source.port){
             softswitch_softswitch_log(0, "softswitch_onReceive / no edge found for packet : dst=%08x:%04x:%02x=%s, src=%08x:%04x:%02x", packet->dest.thread, packet->dest.device, packet->dest.port, dev->id, packet->source.thread, packet->source.device, packet->source.port);
             auto tmp=begin;
             while(tmp!=end){
                 softswitch_softswitch_log(0, "softswitch_onReceive / possible src=%08x:%04x:%02x", tmp->source.thread, tmp->source.device, tmp->source.port);
-                ++tmp;
+		if(begin+1 != tmp){
+		  assert(cmpAddress((tmp-1)->source, tmp->source));
+		}
+		
+		++tmp;
             }
+	    assert(std::is_sorted(begin, end, [=](const InputPortBinding &a, const InputPortBinding &b) -> bool {
+		  return cmpAddress(a.source,b.source);
+		}));
+	    
+
             assert(0);
         }
         
@@ -80,7 +101,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
     
             
     // Call the application level handler
-    softswitch_softswitch_log(4, "softswitch_onReceive / begin application handler, packet=%p, payload=%p", packet, packet->payload);
+    softswitch_softswitch_log(4, "softswitch_onReceive / begin application handler, packet=%p, size=%u", packet, packet->size);
     
     // Needed for handler logging
     ctxt->currentDevice=deviceIndex;
@@ -93,7 +114,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
         dev->state,
         eProps,     
         eState,     
-        packet->payload
+        (void *)(packet+1)
     );
 
     ctxt->currentHandlerType=0;

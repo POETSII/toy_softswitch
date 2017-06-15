@@ -64,6 +64,10 @@ void tinsel_puts(const char *msg)
     fputs(msg, stderr);
 }
 
+extern "C" void softswitch_handler_export_key_value(uint32_t k, uint32_t v)
+{
+  fprintf(stderr, "Key = %u, Value=%u\n", k, v);
+}
 
 extern "C" void softswitch_handler_exit(int code)
 {

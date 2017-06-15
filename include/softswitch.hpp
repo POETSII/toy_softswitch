@@ -22,13 +22,14 @@ typedef struct _address_t
 
 // A packet. This probably mixes hardware and
 // software routing.
+#pragma pack(push,1)
 typedef struct _packet_t
 {
-    address_t dest;
-    address_t source;
-    uint32_t lamport; // lamport clock
-    uint8_t payload[];
+  address_t dest;
+  address_t source;
+  uint32_t size;  // total size, including header
 }packet_t;
+#pragma pack(pop)
 
 typedef uint32_t (*ready_to_send_handler_t)(
     const void *graphProps,

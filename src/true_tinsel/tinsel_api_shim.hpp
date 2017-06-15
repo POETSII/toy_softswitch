@@ -42,7 +42,8 @@ uint32_t tinsel_mboxCanSend()
 // Message length in bytes
 void tinsel_mboxSetLen(uint32_t n)
 {
-    tinselSetLen(n);
+  uint32_t flitCount=(n+TinselWordsPerFlit+1) & (TinselWordsPerFlit-1);
+  tinselSetLen(flitCount);
 }
 
 // Send message at address to destination

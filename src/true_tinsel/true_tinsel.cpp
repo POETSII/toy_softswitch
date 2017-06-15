@@ -122,20 +122,22 @@ extern "C" int vsnprintf_unsigned( char * buffer, int bufsz, char pad, int width
   
   static_assert(sizeof(unsigned)==4,"Assuming we have 32-bit integers...");
   
-  static const unsigned pow10[9]={
-           1,     10,      100,     1000,
-       10000, 100000,  1000000, 10000000,
-   100000000
+  static const unsigned pow10[10]={
+           1,           10,         100,
+	   1000,        10000,      100000,
+	   1000000,     10000000,   100000000,
+	   1000000000ul
   };
   
   char tmp[16]={0};
   int len=0;
   
   bool nonZero=false;
-  for(int p=sizeof(pow10)/sizeof(pow10[0]); p>=0; p--){
+  for(int p=sizeof(pow10)/sizeof(pow10[0])-1; p>=0; p--){
     int d=0;
     while( val > pow10[p] ){
       val-=pow10[p];
+      d=d+1;
     }
     if(d>0 || nonZero){
       tmp[len++]=d+'0';
@@ -214,11 +216,13 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
       
       type=*format++;
       switch(type){
-      case 'u':
-        delta=vsnprintf_unsigned(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
+	case 'u':
+        //delta=vsnprintf_unsigned(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
+	delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
         break;
       case 'd':
-        delta=vsnprintf_signed(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,signed));
+        //delta=vsnprintf_signed(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,signed));
+	delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,signed));
         break;
       case 'x':
         delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
@@ -347,7 +351,9 @@ extern "C" void softswitch_handler_exit(int code)
 }
 
 extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value)
-{ 
+{
+  return;
+  
   uint32_t prefix=tinselId()<<8;
 
   const PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
