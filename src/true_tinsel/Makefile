@@ -10,7 +10,8 @@ TINSEL_INC=${POETS_TINSEL_ROOT}
 
 DESIGN=true_tinsel
 
-APPLICATION ?= ../../generated/apps/ising_spin_fix_16_2_threads1
+APPLICATION ?= ../../generated/apps/clocked_izhikevich_fix_80_20_100_100_threads1024
+#APPLICATION ?= ../../generated/apps/clock_tree_8_2_threads1
 
 include $(TINSEL_ROOT)/globals.mk
 
@@ -20,7 +21,7 @@ RV_CXX = riscv64-unknown-elf-g++
 CFLAGS = $(RV_CFLAGS)  -I $(INC) -Os -g -DNDEBUG=1  -Wno-unused-variable -Wno-unused-local-typedefs
 CFLAGS += -fomit-frame-pointer
 CFLAGS += -fno-default-inline
-CFLAGS += -DPOETS_DISABLE_LOGGING=1
+#CFLAGS += -DPOETS_DISABLE_LOGGING=1
 CFLAGS += -DPOETS_MAX_LOGGING_LEVEL=3
 CFLAGS += -fno-zero-initialized-in-bss
 #LDFLAGS = -melf32lriscv -G 0 
@@ -63,7 +64,7 @@ sim.ppm: code.v data.v vis
 
 run-jtag: code.v data.v
 	LD_LIBRARY_PATH=$(QUARTUS_ROOTDIR)/linux64 hostlink \
-    code.v data.v -n 230400 -p
+    code.v data.v -n 230400 -p -k out.kv
 
 .PHONY: run-sim
 run-sim: sim.ppm
