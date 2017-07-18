@@ -144,7 +144,7 @@ if [[ "${placement}" == "cluster" ]] ; then
         >&2 echo "   Partitioned file=${part_file}."
     fi
     ${path_to_graph_schema}/tools/render_graph_as_metis.py ${input_file} ${threads} > ${part_file}
-    input_file=${part_file}
+    input_file="${part_file}"
 elif [[ "${placement}" == "random" ]] ; then
     # Do nothing
     true
