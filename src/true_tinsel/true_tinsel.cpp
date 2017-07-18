@@ -352,8 +352,6 @@ extern "C" void softswitch_handler_exit(int code)
 
 extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value)
 {
-  return;
-  
   uint32_t prefix=tinselId()<<8;
 
   const PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
