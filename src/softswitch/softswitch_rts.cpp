@@ -110,7 +110,7 @@ extern "C" void softswitch_UpdateRTS(
     bool anyReadyPrev = 0 != (dev->rtsFlags&0x7FFFFFFFul);
     bool anyReadyNow = 0 != (flags&0x7FFFFFFFul);
     
-    // Check if overall output RTS status is the same (ignoring which ports) 
+    // Check if overall output RTS status is the same (ignoring which pins) 
     if( anyReadyPrev == anyReadyNow ){
         softswitch_softswitch_log(3, "softswitch_UpdateRTS (%s) : done (no change), prev=%x, now=%x", dev->id, dev->rtsFlags, flags);       
         return;

@@ -26,14 +26,14 @@ extern "C" void softswitch_init(PThreadContext *ctxt)
       
       const DeviceTypeVTable *devVtable=dev->vtable;
       for(unsigned j=0; j<devVtable->numOutputs; j++){
-        OutputPortTargets *target=(OutputPortTargets*)dev->targets+j;
+        OutputPinTargets *target=(OutputPinTargets*)dev->targets+j;
         target->targets = (address_t*)( softswitch_pthread_global_properties + (uintptr_t)target->targets );
       }
       for(unsigned j=0; j<devVtable->numInputs; j++){
-        InputPortSources *sources=(InputPortSources*)dev->sources+j;
+        InputPinSources *sources=(InputPinSources*)dev->sources+j;
         if(sources->sourceBindings){
           for(unsigned k=0; k<sources->numSources; k++){
-            InputPortBinding *binding=(InputPortBinding*)sources->sourceBindings+k;
+            InputPinBinding *binding=(InputPinBinding*)sources->sourceBindings+k;
             if(binding->edgeProperties){
               binding->edgeProperties=softswitch_pthread_global_properties+(uintptr_t)binding->edgeProperties;
             }
@@ -59,27 +59,27 @@ extern "C" void softswitch_init(PThreadContext *ctxt)
 
 	/*
 	if(vtable->numInputs){
-	  tinsel_puts("softswitch_init - have input ports\n");
+	  tinsel_puts("softswitch_init - have input pins\n");
 	}else{
-	  tinsel_puts("softswitch_init - no input ports\n");
+	  tinsel_puts("softswitch_init - no input pins\n");
 	}
 	*/
         
         softswitch_softswitch_log(4, "softswitch_init : looking for init handler for %s.", dev->id);
         for(unsigned pi=0; pi<vtable->numInputs; pi++){
 	  
-            const InputPortVTable *port=vtable->inputPorts+pi;
+            const InputPinVTable *pin=vtable->inputPins+pi;
 	    
-            if(!strcmp(port->name,"__init__")){
+            if(!strcmp(pin->name,"__init__")){
 	      
                 softswitch_softswitch_log(3, "softswitch_init : calling init handler for %s.", dev->id);
                 
                 // Needed for handler logging
                 ctxt->currentDevice=i;
                 ctxt->currentHandlerType=1;
-                ctxt->currentPort=pi;
+                ctxt->currentPin=pi;
                 
-                receive_handler_t handler=port->receiveHandler;
+                receive_handler_t handler=pin->receiveHandler;
 
                 handler(
                     ctxt->graphProps,

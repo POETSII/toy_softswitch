@@ -92,11 +92,11 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
     append_printf(left, dst, "[%08x] APPL / device (%u)=%s", tinsel_myId(), ctxt->currentDevice, deviceContext->id); 
 
     if(ctxt->currentHandlerType==1){
-        auto port=deviceContext->vtable->inputPorts[ctxt->currentPort].name;
-        append_printf(left, dst, " / recv / %s : ", port);
+        auto pin=deviceContext->vtable->inputPins[ctxt->currentPin].name;
+        append_printf(left, dst, " / recv / %s : ", pin);
     }else if(ctxt->currentHandlerType==2){
-        auto port=deviceContext->vtable->outputPorts[ctxt->currentPort].name;
-        append_printf(left, dst, " / send / %s : ", port);
+        auto pin=deviceContext->vtable->outputPins[ctxt->currentPin].name;
+        append_printf(left, dst, " / send / %s : ", pin);
     }else if(ctxt->currentHandlerType==3){
         append_printf(left, dst, " / comp / compute : ");
     }
@@ -199,7 +199,7 @@ extern "C" void softswitch_main()
             if(currSendTodo>0){
                 assert(currSendAddressList);
                 
-                softswitch_softswitch_log(3, "sending to thread %08x, device %u, port %u", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->port);
+                softswitch_softswitch_log(3, "sending to thread %08x, device %u, pin %u", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->pin);
                 
                 // Update the target address (including the device and pin)
                 ((packet_t*)sendBuffer)->dest = *currSendAddressList;

@@ -37,11 +37,11 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     const DeviceTypeVTable *vtable=dev->vtable;
 
     assert(dev->rtsFlags);
-    unsigned portIndex=right_most_one(dev->rtsFlags);
+    unsigned pinIndex=right_most_one(dev->rtsFlags);
     
-    softswitch_softswitch_log(4, "softswitch_onSend : device=%08x:%04x=%s, rtsFlags=%x, selected=%u", ctxt->threadId, dev->index,  dev->id, dev->rtsFlags, portIndex);    
+    softswitch_softswitch_log(4, "softswitch_onSend : device=%08x:%04x=%s, rtsFlags=%x, selected=%u", ctxt->threadId, dev->index,  dev->id, dev->rtsFlags, pinIndex);    
 
-    send_handler_t handler=vtable->outputPorts[portIndex].sendHandler;
+    send_handler_t handler=vtable->outputPins[pinIndex].sendHandler;
 
     softswitch_softswitch_log(4, "softswitch_onSend : calling application handler");    
 
@@ -50,7 +50,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     // Needed for handler logging
     ctxt->currentDevice=dev->index;
     ctxt->currentHandlerType=2;
-    ctxt->currentPort=portIndex;
+    ctxt->currentPin=pinIndex;
 
     char *payload=(char*)((packet_t*)message+1);
 
@@ -65,17 +65,17 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     
     softswitch_softswitch_log(4, "softswitch_onSend : application handler done, doSend=%d", doSend?1:0);
 
-    uint32_t messageSize=vtable->outputPorts[portIndex].messageSize;
+    uint32_t messageSize=vtable->outputPins[pinIndex].messageSize;
 
     if(doSend){
-        numTargets=dev->targets[portIndex].numTargets;
-        pTargets=dev->targets[portIndex].targets;
+        numTargets=dev->targets[pinIndex].numTargets;
+        pTargets=dev->targets[pinIndex].targets;
         ((packet_t*)message)->source.thread=ctxt->threadId;
         ((packet_t*)message)->source.device=dev->index;
-        ((packet_t*)message)->source.port=portIndex;
+        ((packet_t*)message)->source.pin=pinIndex;
         ((packet_t*)message)->size=messageSize;
 
-        softswitch_softswitch_log(4, "softswitch_onSend : source = %x:%x:%x", ctxt->threadId, dev->index, portIndex);    
+        softswitch_softswitch_log(4, "softswitch_onSend : source = %x:%x:%x", ctxt->threadId, dev->index, pinIndex);    
     }
 
     uint32_t payloadSize=messageSize - sizeof(packet_t);

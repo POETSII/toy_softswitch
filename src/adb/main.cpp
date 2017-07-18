@@ -84,10 +84,10 @@ pTC->rtcChecked = 0;
 pTC->rtcOffset  = 0;
 
 pTC->vtables->numInputs          = 1;
-pTC->vtables->inputPorts         = new InputPortVTable;
+pTC->vtables->inputPins         = new InputPinVTable;
 
 pTC->vtables->numOutputs         = 1;
-pTC->vtables->outputPorts        = new OutputPortVTable;
+pTC->vtables->outputPins        = new OutputPinVTable;
 
 pTC->vtables->readyToSendHandler = f_rts;
 printf("f_rts  = %p\n",f_rts);
@@ -98,7 +98,7 @@ pTC->devices->vtable             = pTC->vtables;
 pTC->devices->properties         = 0;
 pTC->devices->state              = 0;
 pTC->devices->index              = 0;
-pTC->devices->targets            = new OutputPortTargets;
+pTC->devices->targets            = new OutputPinTargets;
 pTC->devices->rtsFlags           = 0x0;
 pTC->devices->rtc                = false;
 pTC->devices->prev               = 0;
@@ -108,11 +108,11 @@ pTC->devices->targets->numTargets = 1;
 pTC->devices->targets->targets = new address_t;
 pTC->devices->targets->targets->thread = 99;
 pTC->devices->targets->targets->device = 88;
-pTC->devices->targets->targets->port   = 77;
+pTC->devices->targets->targets->pin   = 77;
 pTC->devices->targets->targets->flag   = 66;
 
-pTC->vtables->inputPorts->receiveHandler = f_recv;
-pTC->vtables->outputPorts->sendHandler   = f_send;
+pTC->vtables->inputPins->receiveHandler = f_recv;
+pTC->vtables->outputPins->sendHandler   = f_send;
 
 }
 

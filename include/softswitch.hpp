@@ -15,7 +15,7 @@ typedef struct _address_t
 {
     uint32_t thread;    // hardware
     uint16_t device;    // softare
-    uint8_t port;       // software
+    uint8_t pin;       // software
     uint8_t flag; //=0; // software
 }address_t;
 #pragma pack(pop)
@@ -59,7 +59,7 @@ typedef void (*compute_handler_t)(
     void *devState
 );
 
-typedef struct _InputPortVTable
+typedef struct _InputPinVTable
 {
     receive_handler_t receiveHandler;
     unsigned messageSize;
@@ -68,53 +68,53 @@ typedef struct _InputPortVTable
     uint16_t propertiesSize;
     uint16_t stateSize;
     const char *name;
-}InputPortVTable;
+}InputPinVTable;
 
-typedef struct _OutputPortVTable
+typedef struct _OutputPinVTable
 {
     send_handler_t sendHandler;
     unsigned messageSize;
     const char *name;
-}OutputPortVTable;
+}OutputPinVTable;
 
 // Gives access to the code associated with each device
 typedef struct _DeviceTypeVTable
 {
     ready_to_send_handler_t readyToSendHandler;
     unsigned numOutputs;
-    const OutputPortVTable *outputPorts;
+    const OutputPinVTable *outputPins;
     unsigned numInputs;
-    const InputPortVTable *inputPorts;
+    const InputPinVTable *inputPins;
     compute_handler_t computeHandler;
     const char *id; // Unique id of the device type
 }DeviceTypeVTable;
 
-// Gives the distribution list when sending from a particular port
-// Read-only. This is likely to be unique to each port, but it may be possible
+// Gives the distribution list when sending from a particular pin
+// Read-only. This is likely to be unique to each pin, but it may be possible
 // to share.
-typedef struct _OutputPortTargets
+typedef struct _OutputPinTargets
 {
     unsigned numTargets;
     address_t *targets; 
-}OutputPortTargets;
+}OutputPinTargets;
 
-typedef struct _InputPortBinding
+typedef struct _InputPinBinding
 {
     address_t source;
     const void *edgeProperties; // On startup this is zero or a byte offset in global properties array
     void *edgeState;            // On startup this is zero or a byte offset into global state array
-}InputPortBinding;
+}InputPinBinding;
 
 // Allows us to bind incoming messages to the appropriate edge properties
-/* The properties will be stored in order of address then port. This would
+/* The properties will be stored in order of address then pin. This would
    be much better done by a hash-table or something. Or possibly embedding
     the destination properties into the message?
 */
-typedef struct _InputPortSources
+typedef struct _InputPinSources
 {
     unsigned numSources;  // This will be null if the input has properties/state
-    const InputPortBinding *sourceBindings; // This will be null if the input had no properties or state
-}InputPortSources;
+    const InputPinBinding *sourceBindings; // This will be null if the input had no properties or state
+}InputPinSources;
 
 //! Context is fixed size. Points to varying size properties and state
 typedef struct _DeviceContext
@@ -124,8 +124,8 @@ typedef struct _DeviceContext
     const void *properties;
     void *state;
     unsigned index;
-    const OutputPortTargets *targets;  // One entry per output port
-    const InputPortSources *sources;   // One entry per input port
+    const OutputPinTargets *targets;  // One entry per output pin
+    const InputPinSources *sources;   // One entry per input pin
     const char *id;              // unique id of the device
 
     uint32_t rtsFlags;
@@ -172,7 +172,7 @@ typedef struct _PThreadContext
     // This is used by the softswitch to track which device (if any) is active, so that we know during things like handler_log
     uint32_t currentDevice; 
     int currentHandlerType;   // 0 = None, 1 = Recv, 2 = Send
-    uint32_t currentPort; // Index of the port (for recv and send)
+    uint32_t currentPin; // Index of the pin (for recv and send)
     
     // If true, then the softswitch must go through and turn relative
     // pointers during init. All relevant pointers should only be read/written
@@ -242,8 +242,8 @@ extern const uint8_t softswitch_pthread_global_properties[];
 //! Array of all state BLOBs used in the program (device, edge)
 extern uint8_t softswitch_pthread_global_state[];
 
-//! Array of all output port (len,pAddress) pairs
-extern const OutputPortTargets softswitch_pthread_output_port_targets[];
+//! Array of all output pin (len,pAddress) pairs
+extern const OutputPinTargets softswitch_pthread_output_pin_targets[];
 
 void softswitch_main();
 
