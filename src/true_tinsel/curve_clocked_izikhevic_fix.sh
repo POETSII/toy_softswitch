@@ -7,13 +7,16 @@ TS="1024 512 256 128 64 32 16 8 4 2 1"
 
 WORKING=$(mktemp -d)
 
-N=256
-MAXTIME=100
-EXPORTDELTAMASK=65536 # Never export
+NE=80
+NI=20
+K=40
+MAXTICKS=100
+MAXFANIN=16
+MAXFANOUT=16
 
-(cd ~/graph_schema && python3 apps/gals_heat_fix/create_gals_heat_fix_instance.py $N $MAXTIME > ${WORKING}/base.xml  )
+(cd ~/graph_schema && python3 apps/clocked_izhikevich_fix/create_clocked_izhikevich_fix_instance.py $NE $NI $K $MAXTICKS $MAXFANIN $MAXFANOUT  > ${WORKING}/base.xml  )
 
-BASE="gals_heat_fix_${N}_${MAXTIME}"
+BASE="clocked_izhikevich_fix_${NE}_${NI}_${K}_${MAXTICKS}"
 
 rm ${BASE}.csv
 for T in $TS; do

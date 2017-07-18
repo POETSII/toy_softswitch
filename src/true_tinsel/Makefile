@@ -9,7 +9,7 @@ export POETS_TINSEL_ROOT
 TINSEL_ROOT=${POETS_TINSEL_ROOT}
 TINSEL_INC=${POETS_TINSEL_ROOT}
 
-APPLICATION ?= ../../generated/apps/ising_spin_fix_16_2_threads1
+APPLICATION ?= ../../generated/apps/clock_tree_8_3_threads64
 
 DESIGN_ELF ?= true_tinsel.elf
 
@@ -34,6 +34,10 @@ else ifneq ($(HARDWARE_LOG_LEVEL),)
 CFLAGS += -DPOETS_MAX_LOGGING_LEVEL=$(HARDWARE_LOG_LEVEL)
 else
 CFLAGS += -DPOETS_MAX_LOGGING_LEVEL=3
+endif
+
+ifeq ($(HARDWARE_INTRATHREAD_SEND_ENABLE),1)
+CFLAGS += -DSOFTSWITCH_INTRATHREAD_SEND_ENABLE=1
 endif
 
 #LDFLAGS = -melf32lriscv -G 0 
@@ -77,7 +81,7 @@ sim.ppm: code.v data.v vis
 	./vis dump.txt > sim.ppm
 
 run-jtag: code.v data.v
-	LD_LIBRARY_PATH=$(QUARTUS_ROOTDIR)/linux64 hostlink \
+	LD_LIBRARY_PATH=$(QUARTUS_ROOTDIR)/linux64 hostlink -v \
     code.v data.v -n 230400 -p
 
 .PHONY: run-sim

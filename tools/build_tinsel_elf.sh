@@ -1,4 +1,4 @@
-#!/bin/bash
+``#!/bin/bash
 
 script_prefix="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 path_prefix="$(dirname "$(dirname "${script_prefix}" )" )"
@@ -10,7 +10,7 @@ path_to_softswitch="${path_prefix}/toy_softswitch"
 output_file="tinsel.elf"
 input_file=""
 threads="1024"
-placement="default"
+placement="random"
 contraction="dense"
 
 keep_cpp="0"
@@ -19,6 +19,7 @@ release_build="0"
 
 hardware_log_level=""
 hardware_assert_enable=""
+hardware_intrathread_send_enable=""
 
 
 function print_usage()
@@ -33,7 +34,7 @@ function print_usage()
     echo ""
     echo "  --placement=method : Placement method to use"
     echo "         cluster : generate a new clustered placement based on thread count"
-    echo "         random : use a different placement each time"
+    echo "         random : use a different placement each time (default)"
     echo ""
     echo "  --contraction=method : How to place n threads on the h hardware threads"
     echo "         dense : map active thread i to hardware thread i"
@@ -50,10 +51,16 @@ function print_usage()
     echo "          1 : check assertions at run-time (bigger but safer code)"
     echo "              default is 1 (check as much as possible)"
     echo ""
+    echo "  --hardware-intrathread-send-enable=value : Whether to allows intrathread messages to bypass mailbox"
+    echo "          0 : everything goes via mailbox"
+    echo "          1 : deliver intra-thread messages directly"
+    echo "              default is 0 (all via mailbox)"
+    echo ""
     echo "  --release : create a release build, designed to be as small and fast as possible"
     echo "         implied settings are:"
     echo "            --hardware-log-level=0"
     echo "            --hardware-assert-enable=0"
+    echo "            --hardware-intrathread-send-enable=1"
     echo ""
     echo "  -v | --verbose : Print debug information to stderr"
     echo ""
@@ -92,7 +99,9 @@ while [ "$#" -gt 0 ]; do
     
     --hardware-assert-enable=*) hardware_assert_enable="${1#*=}"; shift 1;;
     --hardware-assert-enable) echo "$1 requires an argument" >&2; exit 1;;
-    
+
+    --hardware-intrathread-send-enable=*) hardware_intrathread_send_enable="${1#*=}"; shift 1;;
+    --hardware-intrathread-send-enable) echo "$1 requires an argument" >&2; exit 1;;
     
     -v|--verbose)  verbose=$(($verbose+1)); shift 1;;
 
@@ -115,9 +124,11 @@ temp_dir=$(mktemp -d)
 if [[ "${release_build}" -eq 1 ]] ; then
     hardware_log_level=${hardware_log_level:-0}
     hardware_assert_enable=${hardware_assert_enable:-0}
+    hardware_intrathread_send_enable=${hardware_intrathread_send_enable:-1}
 fi
 hardware_log_level=${hardware_log_level:-4}
 hardware_assert_enable=${hardware_assert_enable:-1}
+hardware_intrathread_send_enable=${hardware_intrathread_send_enable:-0}
 
 if [[ verbose -gt 0 ]] ; then
     >&2 echo "Files:"
@@ -135,12 +146,13 @@ if [[ verbose -gt 0 ]] ; then
     >&2 echo "  keep_cpp = ${keep_cpp}"
     >&2 echo "  hardware_log_level = ${hardware_log_level}"
     >&2 echo "  hardware_assert_enable = ${hardware_assert_enable}"
+    >&2 echo "  hardware_intrathread_send_enable = ${hardware_intrathread_send_enable}"
 fi
 
 if [[ "${placement}" == "cluster" ]] ; then
     part_file="${temp_dir}/partitioned.xml" 
     if [[ verbose -gt 0 ]] ; then
-        >&2 echo "Generating a new partitioning using metis with ${partition} clusters."
+        >&2 echo "Generating a new partitioning using metis with ${threads} clusters."
         >&2 echo "   Partitioned file=${part_file}."
     fi
     ${path_to_graph_schema}/tools/render_graph_as_metis.py ${input_file} ${threads} > ${part_file}
@@ -181,6 +193,7 @@ make -f ${path_to_softswitch}/src/true_tinsel/Makefile \
     DESIGN_ELF=${output_file} \
     HARDWARE_LOG_LEVEL=${hardware_log_level} \
     HARDWARE_ASSERT_ENABLE=${hardware_assert_enable} \
+    HARDWARE_INTRATHREAD_SEND_ENABLE=${hardware_intrathread_send_enable} \
     ${output_file}
 RES=$?
 if [[ $RES -ne 0 ]] ; then
