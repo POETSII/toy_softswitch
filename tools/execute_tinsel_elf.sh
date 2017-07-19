@@ -157,7 +157,7 @@ cat ${hostlink_measure_file} >> ${measure_file}
 if [[ ( $RES -eq 124 ) || ( $RES -eq 133 ) ]] ; then
     >&2 echo "hostlink timed out with code $RES";
     exit 124
-elif [[ $RES -ne 1 ]] ; then
+elif [[ $RES -ne 0 ]] ; then
     >&2 echo "hostlink return error code $RES";
     exit 1
 fi
