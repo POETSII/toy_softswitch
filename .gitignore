@@ -1,5 +1,12 @@
 *.o
 *.a
-bin
-generated
+*.elf
+/bin
+/riscv-toolchain
+/.vagrant
+/generated
+/lib
+/tmp
+/*.xml
+/*.gz
 
