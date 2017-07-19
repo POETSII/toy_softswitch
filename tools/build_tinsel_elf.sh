@@ -1,4 +1,4 @@
-``#!/bin/bash
+#!/usr/bin/env bash
 
 script_prefix="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 path_prefix="$(dirname "$(dirname "${script_prefix}" )" )"
