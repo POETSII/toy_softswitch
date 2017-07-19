@@ -1,0 +1,10 @@
+*.o
+*.elf
+/bin
+/riscv-toolchain
+/.vagrant
+/generated
+/lib
+/tmp
+/*.xml
+/*.gz
