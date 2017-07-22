@@ -99,6 +99,9 @@ while [ "$#" -gt 0 ]; do
     
     --contraction=*) contraction="${1#*=}"; shift 1;;
     --contraction) echo "$1 requires an argument" >&2; exit 1;;
+
+    --destination-order=*) destination_order="${1#*=}"; shift 1;;
+    --destination-order) echo "$1 requires an argument" >&2; exit 1;;
     
     --keep-cpp) keep_cpp="1"; shift 1;;
     
@@ -158,6 +161,7 @@ if [[ verbose -gt 0 ]] ; then
     >&2 echo "  threads = ${threads}"
     >&2 echo "  placement = ${placement}"
     >&2 echo "  contraction = ${contraction}"
+    >&2 echo "  destination_order = ${destination_order}"
     >&2 echo "  keep_cpp = ${keep_cpp}"
     >&2 echo "  hardware_log_level = ${hardware_log_level}"
     >&2 echo "  hardware_assert_enable = ${hardware_assert_enable}"

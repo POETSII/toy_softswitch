@@ -1,4 +1,5 @@
 *.o
+*.a
 *.elf
 /bin
 /riscv-toolchain
@@ -8,3 +9,5 @@
 /tmp
 /*.xml
 /*.gz
+
+*.ppk

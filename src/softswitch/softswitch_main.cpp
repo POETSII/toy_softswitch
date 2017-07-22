@@ -211,23 +211,23 @@ extern "C" void softswitch_main()
                 // Update the target address (including the device and pin)
                 ((packet_t*)sendBuffer)->dest = *currSendAddressList;
 
-		if(enableIntraThreadSend && currSendAddressList->thread==thisThreadId){
-		  // Deliver on this thread without waiting
-		  softswitch_onReceive(ctxt, (const void *)sendBuffer);  // Decode and dispatch
-		}else{
-		  // Send to the relevant thread
-		  // TODO: Shouldn't there be something like mboxForward as part of
-		  // the API, which only takes the address?
-		  softswitch_softswitch_log(4, "setting length to %u", currSize);
-		  tinsel_mboxSetLen(currSize);
-		  softswitch_softswitch_log(4, "doing send");
-		  tinsel_mboxSend(currSendAddressList->thread, sendBuffer);
-		}
+                if(enableIntraThreadSend && currSendAddressList->thread==thisThreadId){
+                    // Deliver on this thread without waiting
+                    softswitch_onReceive(ctxt, (const void *)sendBuffer);  // Decode and dispatch
+                }else{
+                    // Send to the relevant thread
+                    // TODO: Shouldn't there be something like mboxForward as part of
+                    // the API, which only takes the address?
+                    softswitch_softswitch_log(4, "setting length to %u", currSize);
+                    tinsel_mboxSetLen(currSize);
+                    softswitch_softswitch_log(4, "doing send");
+                    tinsel_mboxSend(currSendAddressList->thread, sendBuffer);
+                }
 
-		// Move onto next address for next time
-		currSendTodo--; // If this reaches zero, we are done with the message
-		currSendAddressList++;
-	    }
+                // Move onto next address for next time
+                currSendTodo--; // If this reaches zero, we are done with the message
+                currSendAddressList++;
+            }
         }
         
         softswitch_softswitch_log(3, "loop bottom");
