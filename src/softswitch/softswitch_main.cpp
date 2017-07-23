@@ -119,6 +119,14 @@ const int enableIntraThreadSend=1;
 const int enableIntraThreadSend=0;
 #endif
 
+#ifdef SOFTSWITCH_ENABLE_SEND_OVER_RECV
+const int enableSendOverRecv=1;
+#else
+const int enableSendOverRecv=0;
+#endif
+
+
+
 extern "C" void softswitch_main()
 { 
     PThreadContext *ctxt=softswitch_getContext();
@@ -172,8 +180,27 @@ extern "C" void softswitch_main()
         softswitch_softswitch_log(3, "waiting for send=%d, recv=%d", wakeupFlags&tinsel_CAN_SEND, (wakeupFlags&tinsel_CAN_RECV)?1:0);
         tinsel_mboxWaitUntil( (tinsel_WakeupCond) wakeupFlags );
 
-        if(tinsel_mboxCanRecv()){
+        bool doRecv=false;
+        bool doSend=false;
+
+        if(enableSendOverRecv){
+            soSend=tinsel_mboxCanSend();
+            if(!doSend){
+                assert(tinsel_mboxCanSend());
+                doRecv=true;
+            }
+        }else{
+            // Default. Drain before fill.
+            doRecv=tinsel_mboxCanRecv()
+            if(!doRecv){
+                assert(tinsel_mboxCanRecv());
+                doSend=true;
+            }
+        }
+
+        if(doSend){
             softswitch_softswitch_log(2, "receive branch");
+            tinsel_mboxCanSend();
 
             /*! We always receive messages, even while a send is in progress (currSendTodo > 0) */
 
@@ -184,8 +211,10 @@ extern "C" void softswitch_main()
 
             softswitch_softswitch_log(4, "giving buffer back");
             tinsel_mboxAlloc(recvBuffer); // Put it back in receive pool
-        }else{
+        }
+        if(doRecv){
             softswitch_softswitch_log(2, "send branch");
+            tinsel_mboxCanRecv();
 
             assert(wantToSend); // Only come here if we have something to do
             assert(tinsel_mboxCanSend()); // Only reason we could have got here

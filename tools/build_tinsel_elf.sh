@@ -26,6 +26,7 @@ hardware_softswitch_log_level=""
 hardware_handler_log_level=""
 hardware_assert_enable=""
 hardware_intrathread_send_enable=""
+hardware_intrathread_send_over_recv=""
 
 profile_softswitch_render=""
 
@@ -73,6 +74,11 @@ function print_usage()
     echo "  --hardware-intrathread-send-enable=value : Whether to allows intrathread messages to bypass mailbox"
     echo "          0 : everything goes via mailbox"
     echo "          1 : deliver intra-thread messages directly"
+    echo "              default is 0 (all via mailbox)"
+    echo ""
+    echo "  --hardware-send-over-recv=value : Prefer to send (fill network) rather than recv (drain)"
+    echo "          0 : receive rather than send"
+    echo "          1 : send rather than send"
     echo "              default is 0 (all via mailbox)"
     echo ""
     echo "  --release : create a release build, designed to be as small and fast as possible"
@@ -127,6 +133,10 @@ while [ "$#" -gt 0 ]; do
 
     --hardware-intrathread-send-enable=*) hardware_intrathread_send_enable="${1#*=}"; shift 1;;
     --hardware-intrathread-send-enable) echo "$1 requires an argument" >&2; exit 1;;
+
+    --hardware-send-over-recv=*) hardware_send_over_recv="${1#*=}"; shift 1;;
+    --hardware-send-over-recv) echo "$1 requires an argument" >&2; exit 1;;
+    
     
     --profile-softswitch-render=*) profile_softswitch_render="${1#*=}"; shift 1;;
     --profile-softswitch-render) echo "$1 requires an argument" >&2; exit 1;;
@@ -156,12 +166,14 @@ if [[ "${release_build}" -eq 1 ]] ; then
     hardware_handler_log_level=${hardware_handler_log_level:-0}
     hardware_assert_enable=${hardware_assert_enable:-0}
     hardware_intrathread_send_enable=${hardware_intrathread_send_enable:-1}
+    hardware_send_over_recv=${hardware_send_over_recv:-0}
 fi
 hardware_log_level=${hardware_log_level:-4}
 hardware_softswitch_log_level=${hardware_softswitch_log_level:-4}
 hardware_handler_log_level=${hardware_handler_log_level:-4}
 hardware_assert_enable=${hardware_assert_enable:-1}
 hardware_intrathread_send_enable=${hardware_intrathread_send_enable:-0}
+hardware_send_over_recv=${hardware_send_over_recv:-0}
 
 if [[ verbose -gt 0 ]] ; then
     >&2 echo "Files:"
@@ -182,6 +194,7 @@ if [[ verbose -gt 0 ]] ; then
     >&2 echo "  hardware_log_level = ${hardware_log_level}"
     >&2 echo "  hardware_assert_enable = ${hardware_assert_enable}"
     >&2 echo "  hardware_intrathread_send_enable = ${hardware_intrathread_send_enable}"
+    >&2 echo "  hardware_send_over_recv = ${hardware_send_over_recv}"
 fi
 
 if [[ -f ${measure_file} ]] ; then
@@ -272,6 +285,7 @@ fi
     HARDWARE_SOFTSWITCH_LOG_LEVEL=${hardware_softswitch_log_level} \
     HARDWARE_ASSERT_ENABLE=${hardware_assert_enable} \
     HARDWARE_INTRATHREAD_SEND_ENABLE=${hardware_intrathread_send_enable} \
+    HARDWARE_SEND_OVER_RECV=${hardware_send_over_recv} \
     ${output_file}
 RES=$?
 if [[ $RES -ne 0 ]] ; then
