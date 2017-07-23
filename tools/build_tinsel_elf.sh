@@ -226,13 +226,18 @@ ${render_softswitch_command} ${path_to_graph_schema}/tools/render_graph_as_softs
     --threads ${threads} \
     --hardware-threads=${hardware_threads} \
     --contraction=${contraction} \
-    --dest ${temp_dir}
+    --dest ${temp_dir} \
+    --measure=${temp_dir}/render_softswitch.measure.csv
 RES=$?
 if [[ $RES -ne 0 ]] ; then
     >&2 echo "Got error code $RES while generating soft-switch configuration files"
     exit 1
 fi
 echo "buildSoftswitchRender, -, $(cat ${temp_dir}/build_softswitch.time), sec" >> ${measure_file}
+
+for read x ; do
+    echo "$x" >> >> ${measure_file}
+done < ${temp_dir}/render_softswitch.measure.csv
 
 ###################################################################################
 ## compilation
