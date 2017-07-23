@@ -22,6 +22,8 @@ verbose="0"
 release_build="0"
 
 hardware_log_level=""
+hardware_softswitch_log_level=""
+hardware_handler_log_level=""
 hardware_assert_enable=""
 hardware_intrathread_send_enable=""
 
@@ -49,6 +51,16 @@ function print_usage()
     echo "         random : select a random subset"
     echo ""
     echo "  --hardware-log-level=level : Minimum log-level to enable in compiled elf"
+    echo "          0 : all logging code is disabled (minimal code)"
+    echo "          i : logging enabled for at most level i"
+    echo "              default is 4 (essentially all debug will come out)"
+    echo ""
+    echo "  --hardware-softswitch-log-level=level : Minimum softswitch log-level to enable in compiled elf"
+    echo "          0 : all logging code is disabled (minimal code)"
+    echo "          i : logging enabled for at most level i"
+    echo "              default is 4 (essentially all debug will come out)"
+    echo ""
+    echo "  --hardware-handler-log-level=level : Minimum handler log-level to enable in compiled elf"
     echo "          0 : all logging code is disabled (minimal code)"
     echo "          i : logging enabled for at most level i"
     echo "              default is 4 (essentially all debug will come out)"
@@ -140,10 +152,14 @@ temp_dir=$(mktemp -d)
 
 if [[ "${release_build}" -eq 1 ]] ; then
     hardware_log_level=${hardware_log_level:-0}
+    hardware_softswitch_log_level=${hardware_softswitch_log_level:-0}
+    hardware_handler_log_level=${hardware_handler_log_level:-0}
     hardware_assert_enable=${hardware_assert_enable:-0}
     hardware_intrathread_send_enable=${hardware_intrathread_send_enable:-1}
 fi
 hardware_log_level=${hardware_log_level:-4}
+hardware_softswitch_log_level=${hardware_softswitch_log_level:-4}
+hardware_handler_log_level=${hardware_handler_log_level:-4}
 hardware_assert_enable=${hardware_assert_enable:-1}
 hardware_intrathread_send_enable=${hardware_intrathread_send_enable:-0}
 
@@ -235,8 +251,8 @@ if [[ $RES -ne 0 ]] ; then
 fi
 echo "buildSoftswitchRender, -, $(cat ${temp_dir}/build_softswitch.time), sec" >> ${measure_file}
 
-for read x ; do
-    echo "$x" >> >> ${measure_file}
+while read x ; do
+    echo "$x" >> ${measure_file}
 done < ${temp_dir}/render_softswitch.measure.csv
 
 ###################################################################################
@@ -252,6 +268,8 @@ fi
     APPLICATION=${temp_dir} \
     DESIGN_ELF=${output_file} \
     HARDWARE_LOG_LEVEL=${hardware_log_level} \
+    HARDWARE_HANDLER_LOG_LEVEL=${hardware_handler_log_level} \
+    HARDWARE_SOFTSWITCH_LOG_LEVEL=${hardware_softswitch_log_level} \
     HARDWARE_ASSERT_ENABLE=${hardware_assert_enable} \
     HARDWARE_INTRATHREAD_SEND_ENABLE=${hardware_intrathread_send_enable} \
     ${output_file}
