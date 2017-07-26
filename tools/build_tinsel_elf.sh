@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#77;20708;0c#!/usr/bin/env bash
 
 set -e
 
@@ -127,6 +127,12 @@ while [ "$#" -gt 0 ]; do
     
     --hardware-log-level=*) hardware_log_level="${1#*=}"; shift 1;;
     --hardware-log-level) echo "$1 requires an argument" >&2; exit 1;;
+
+    --hardware-softswitch-log-level=*) hardware_softswitch_log_level="${1#*=}"; shift 1;;
+    --hardware-softswitch-log-level) echo "$1 requires an argument" >&2; exit 1;;
+    
+    --hardware-handler-log-level=*) hardware_log_level="${1#*=}"; shift 1;;
+    --hardware-handler-log-level) echo "$1 requires an argument" >&2; exit 1;;
     
     --hardware-assert-enable=*) hardware_assert_enable="${1#*=}"; shift 1;;
     --hardware-assert-enable) echo "$1 requires an argument" >&2; exit 1;;
