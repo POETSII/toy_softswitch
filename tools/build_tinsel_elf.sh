@@ -226,7 +226,7 @@ if [[ "${placement}" == "cluster" ]] ; then
         >&2 echo "Generating a new partitioning using metis with ${threads} clusters."
         >&2 echo "   Partitioned file=${part_file}."
     fi
-    /usr/bin/time -o ${temp_dir}/partition.time -f %e ${path_to_graph_schema}/tools/render_graph_as_metis.py ${input_file} ${threads} > ${part_file}
+    /usr/bin/time -o ${temp_dir}/partition.time -f %e ${path_to_graph_schema}/tools/partition_graph_with_metis.py ${input_file} ${threads} > ${part_file}
     RES=$?
     if [[ $RES -ne 0 ]] ; then
 	>&2 echo "Got error code $RES while generating metis clusters"
