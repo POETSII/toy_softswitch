@@ -293,8 +293,23 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
   IIIIIICC
   IIIIII00  // Terminating NULL.
 
+  Assertion (with file name and line):
+  IIIIIIFD  // Magic number for assertion
+  IIIIIICC
+  IIIIIICC
+  ...
+  IIIIIICC
+  IIIIII00
+  IIIIIILL  // 8-bits of line (LSB)
+  IIIIIILL  // 8-bits of line
+  IIIIIILL  // 8-bits of line
+  IIIIIILL  // 8-bits of line (MSB)
+
+  
+
   Assertion (with no further information):
   IIIIIIFE  // Magic number for assertion
+  
   
   Exit:
   IIIIIIFF  // Magic number for exit
@@ -379,7 +394,22 @@ extern "C" void __assert_func (const char *file, int line, const char *assertFun
 {
   uint32_t prefix=tinselId()<<8;
 
+  #ifndef SOFTSWITCH_MINIMAL_ASSERT
+  tinselHostPut(prefix | 0xFD); // Code for an assert with info
+  while(1){
+    char ch=*file++;
+    tinselHostPut(prefix | uint8_t(ch));
+    if(ch==0){
+      break;
+    }
+  }
+  tinselHostPut(prefix | ((line>>0)&0xFF));
+  tinselHostPut(prefix | ((line>>8)&0xFF));
+  tinselHostPut(prefix | ((line>>16)&0xFF));
+  tinselHostPut(prefix | ((line>>24)&0xFF));
+  #else
   tinselHostPut(prefix | 0xFE); // Code for an assert
+  #endif
   tinsel_mboxWaitUntil((tinsel_WakeupCond)0);
   while(1);
 }

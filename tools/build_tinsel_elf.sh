@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#77;20708;0c#!/usr/bin/env bash
 
 set -e
 
@@ -22,8 +22,11 @@ verbose="0"
 release_build="0"
 
 hardware_log_level=""
+hardware_softswitch_log_level=""
+hardware_handler_log_level=""
 hardware_assert_enable=""
 hardware_intrathread_send_enable=""
+hardware_intrathread_send_over_recv=""
 
 profile_softswitch_render=""
 
@@ -53,6 +56,16 @@ function print_usage()
     echo "          i : logging enabled for at most level i"
     echo "              default is 4 (essentially all debug will come out)"
     echo ""
+    echo "  --hardware-softswitch-log-level=level : Minimum softswitch log-level to enable in compiled elf"
+    echo "          0 : all logging code is disabled (minimal code)"
+    echo "          i : logging enabled for at most level i"
+    echo "              default is 4 (essentially all debug will come out)"
+    echo ""
+    echo "  --hardware-handler-log-level=level : Minimum handler log-level to enable in compiled elf"
+    echo "          0 : all logging code is disabled (minimal code)"
+    echo "          i : logging enabled for at most level i"
+    echo "              default is 4 (essentially all debug will come out)"
+    echo ""
     echo "  --hardware-assert-enable=value : Whether to check assertions in hardware"
     echo "          0 : debug checks ignored at run-time (faster code, smaller code)"
     echo "          1 : check assertions at run-time (bigger but safer code)"
@@ -61,6 +74,11 @@ function print_usage()
     echo "  --hardware-intrathread-send-enable=value : Whether to allows intrathread messages to bypass mailbox"
     echo "          0 : everything goes via mailbox"
     echo "          1 : deliver intra-thread messages directly"
+    echo "              default is 0 (all via mailbox)"
+    echo ""
+    echo "  --hardware-send-over-recv=value : Prefer to send (fill network) rather than recv (drain)"
+    echo "          0 : receive rather than send"
+    echo "          1 : send rather than send"
     echo "              default is 0 (all via mailbox)"
     echo ""
     echo "  --release : create a release build, designed to be as small and fast as possible"
@@ -109,12 +127,22 @@ while [ "$#" -gt 0 ]; do
     
     --hardware-log-level=*) hardware_log_level="${1#*=}"; shift 1;;
     --hardware-log-level) echo "$1 requires an argument" >&2; exit 1;;
+
+    --hardware-softswitch-log-level=*) hardware_softswitch_log_level="${1#*=}"; shift 1;;
+    --hardware-softswitch-log-level) echo "$1 requires an argument" >&2; exit 1;;
+    
+    --hardware-handler-log-level=*) hardware_log_level="${1#*=}"; shift 1;;
+    --hardware-handler-log-level) echo "$1 requires an argument" >&2; exit 1;;
     
     --hardware-assert-enable=*) hardware_assert_enable="${1#*=}"; shift 1;;
     --hardware-assert-enable) echo "$1 requires an argument" >&2; exit 1;;
 
     --hardware-intrathread-send-enable=*) hardware_intrathread_send_enable="${1#*=}"; shift 1;;
     --hardware-intrathread-send-enable) echo "$1 requires an argument" >&2; exit 1;;
+
+    --hardware-send-over-recv=*) hardware_send_over_recv="${1#*=}"; shift 1;;
+    --hardware-send-over-recv) echo "$1 requires an argument" >&2; exit 1;;
+    
     
     --profile-softswitch-render=*) profile_softswitch_render="${1#*=}"; shift 1;;
     --profile-softswitch-render) echo "$1 requires an argument" >&2; exit 1;;
@@ -140,12 +168,18 @@ temp_dir=$(mktemp -d)
 
 if [[ "${release_build}" -eq 1 ]] ; then
     hardware_log_level=${hardware_log_level:-0}
+    hardware_softswitch_log_level=${hardware_softswitch_log_level:-0}
+    hardware_handler_log_level=${hardware_handler_log_level:-0}
     hardware_assert_enable=${hardware_assert_enable:-0}
     hardware_intrathread_send_enable=${hardware_intrathread_send_enable:-1}
+    hardware_send_over_recv=${hardware_send_over_recv:-0}
 fi
 hardware_log_level=${hardware_log_level:-4}
+hardware_softswitch_log_level=${hardware_softswitch_log_level:-4}
+hardware_handler_log_level=${hardware_handler_log_level:-4}
 hardware_assert_enable=${hardware_assert_enable:-1}
 hardware_intrathread_send_enable=${hardware_intrathread_send_enable:-0}
+hardware_send_over_recv=${hardware_send_over_recv:-0}
 
 if [[ verbose -gt 0 ]] ; then
     >&2 echo "Files:"
@@ -166,6 +200,7 @@ if [[ verbose -gt 0 ]] ; then
     >&2 echo "  hardware_log_level = ${hardware_log_level}"
     >&2 echo "  hardware_assert_enable = ${hardware_assert_enable}"
     >&2 echo "  hardware_intrathread_send_enable = ${hardware_intrathread_send_enable}"
+    >&2 echo "  hardware_send_over_recv = ${hardware_send_over_recv}"
 fi
 
 if [[ -f ${measure_file} ]] ; then
@@ -226,13 +261,18 @@ ${render_softswitch_command} ${path_to_graph_schema}/tools/render_graph_as_softs
     --threads ${threads} \
     --hardware-threads=${hardware_threads} \
     --contraction=${contraction} \
-    --dest ${temp_dir}
+    --dest ${temp_dir} \
+    --measure=${temp_dir}/render_softswitch.measure.csv
 RES=$?
 if [[ $RES -ne 0 ]] ; then
     >&2 echo "Got error code $RES while generating soft-switch configuration files"
     exit 1
 fi
 echo "buildSoftswitchRender, -, $(cat ${temp_dir}/build_softswitch.time), sec" >> ${measure_file}
+
+while read x ; do
+    echo "$x" >> ${measure_file}
+done < ${temp_dir}/render_softswitch.measure.csv
 
 ###################################################################################
 ## compilation
@@ -247,8 +287,11 @@ fi
     APPLICATION=${temp_dir} \
     DESIGN_ELF=${output_file} \
     HARDWARE_LOG_LEVEL=${hardware_log_level} \
+    HARDWARE_HANDLER_LOG_LEVEL=${hardware_handler_log_level} \
+    HARDWARE_SOFTSWITCH_LOG_LEVEL=${hardware_softswitch_log_level} \
     HARDWARE_ASSERT_ENABLE=${hardware_assert_enable} \
     HARDWARE_INTRATHREAD_SEND_ENABLE=${hardware_intrathread_send_enable} \
+    HARDWARE_SEND_OVER_RECV=${hardware_send_over_recv} \
     ${output_file}
 RES=$?
 if [[ $RES -ne 0 ]] ; then
