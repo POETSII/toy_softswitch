@@ -22,6 +22,8 @@ CFLAGS = $(RV_CFLAGS)  -I $(INC) -Os -g  -Wno-unused-variable -Wno-unused-local-
 CFLAGS += -fomit-frame-pointer
 CFLAGS += -fno-default-inline
 CFLAGS += -fno-zero-initialized-in-bss
+CFLAGS +=  -flto
+CFLAGS += -fno-builtin-memcmp -fno-builtin-memcpy
 
 ifeq ($(HARDWARE_ASSERT_ENABLE),0)
 CFLAGS += -DNDEBUG=1
@@ -56,6 +58,7 @@ endif
 LDFLAGS = -Wl,-melf32lriscv  -Wl,--gpsize=0  -Wl,-Bstatic
 
 CFLAGS += -I ${POETS_TOY_SOFTSWITCH_ROOT}/include
+CFLAGS += -I ${POETS_TOY_SOFTSWITCH_ROOT}/src/true_tinsel
 
 .PHONY: all
 all: code.v data.v

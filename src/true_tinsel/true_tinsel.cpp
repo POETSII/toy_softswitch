@@ -1,5 +1,6 @@
 #include "tinsel.h"
 #include "softswitch.hpp"
+#include "tinsel_api.hpp"
 #include "tinsel_api_shim.hpp"
 
 #include <stddef.h>

@@ -4,6 +4,7 @@
 
 static void rts_sanity(PThreadContext *pCtxt)
 {
+  #ifndef NDEBUG
     if(pCtxt->rtsHead != 0){
         assert(pCtxt->rtsTail!=0);
         
@@ -16,6 +17,7 @@ static void rts_sanity(PThreadContext *pCtxt)
     }else{
         assert(pCtxt->rtsHead==0);
     }
+  #endif
 }
 
 // 5 instructions

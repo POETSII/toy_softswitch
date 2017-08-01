@@ -2,7 +2,7 @@
 
 #include "softswitch.hpp"
 
-#include <cstdio>
+//#include <cstdio>
 #include <cstdarg>
 
 //! Initialise data-structures (e.g. RTS)
@@ -238,7 +238,9 @@ extern "C" void softswitch_main()
                 softswitch_softswitch_log(3, "sending to thread %08x, device %u, pin %u", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->pin);
                 
                 // Update the target address (including the device and pin)
-                ((packet_t*)sendBuffer)->dest = *currSendAddressList;
+		static_assert(sizeof(address_t)==8);
+		// This wierdness is to avoid the compiler turning it into a call to memcpy
+                *(uint64_t*)&((packet_t*)sendBuffer)->dest = *(uint64_t*)currSendAddressList;
 
                 if(enableIntraThreadSend && currSendAddressList->thread==thisThreadId){
                     // Deliver on this thread without waiting

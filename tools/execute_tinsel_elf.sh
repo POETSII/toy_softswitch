@@ -132,7 +132,7 @@ fi
 
 hostlink="${path_to_tinsel}/bin/hostlink"
 if [[ "${timeout}" != "" ]] ; then
-    hostlink="/usr/bin/timeout ${timeout} -k ${timeout} ${hostlink}"
+    hostlink="/usr/bin/timeout  -k ${timeout} ${timeout} ${hostlink}"
 fi
 #if [[ verbose -gt 0 ]] ; then
 #    hostlink="${hostlink} -v"
@@ -145,6 +145,8 @@ fi
 #fi
 
 hostlink_measure_file=${temp_dir}/hostlink_measure.csv
+
+echo "${hostlink}"
 
 LD_LIBRARY_PATH=${QUARTUS_ROOTDIR}/linux64 \
     ${hostlink} \
