@@ -222,8 +222,7 @@ echo "buildTinselSettings, hardware_intrathread_send_enable, ${hardware_intrathr
 ###################################################################################
 ## Placement
 
-cluster_pat="[cluster*]"
-if [[ "${placement}" =~ $cluster_pat ]] ; then
+if [[ "${placement}" == cluster* ]] ; then
     if [[ "${placement}" == "cluster-core" ]] ; then
         [[ "${threads}" -eq "1024" ]] || { 2>&1 echo "Error: currently need threads==1024 for cluster-core"; exit 1;}
         cluster_partitions="$((16*4))"
