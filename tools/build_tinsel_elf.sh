@@ -44,6 +44,8 @@ function print_usage()
     echo ""
     echo "  --placement=method : Placement method to use"
     echo "         cluster : generate a new clustered placement based on thread count"
+    echo "         cluster-core : generate a new clustered placement based on cores"
+    echo "         cluster-mbox : generate a new clustered placement based on mailboxes"
     echo "         random : use a different placement each time (default)"
     echo ""
     echo "  --contraction=method : How to place n threads on the h hardware threads"
@@ -220,13 +222,29 @@ echo "buildTinselSettings, hardware_intrathread_send_enable, ${hardware_intrathr
 ###################################################################################
 ## Placement
 
-if [[ "${placement}" == "cluster" ]] ; then
+if [[ "${placement}" == "cluster*" ]] ; then
+    if [[ "${placement}" == "cluster-core" ]] ; then
+        [[ "${threads}" -eq "1024" ]] || { 2>&1 echo "Error: currently need threads==1024 for cluster-core"; exit 1}
+        cluster_partitions="$((16*4))"
+    elif [[ "${placement}" == "cluster-mbox" ]] ; then
+        [[ "${threads}" -eq "1024" ]] || { 2>&1 echo "Error: currently need threads==1024 for cluster-mbox"; exit 1}
+        cluster_partitions="16"
+    elif [[ "${placement}" == "cluster-thread" ]] ; then
+        cluster_partitions="${threads}"
+    elif [[ "${placement}" == "cluster" ]] ; then
+        cluster_partitions="${threads}" # Cluster by thread by default. TODO: this is a poor choice 
+    else
+        >&2 echo "Error : didn't understand cluster method ${placement}"
+        exit 1
+    fi
+    
+
     part_file="${temp_dir}/partitioned.xml" 
     if [[ verbose -gt 0 ]] ; then
         >&2 echo "Generating a new partitioning using metis with ${threads} clusters."
         >&2 echo "   Partitioned file=${part_file}."
     fi
-    /usr/bin/time -o ${temp_dir}/partition.time -f %e ${path_to_graph_schema}/tools/render_graph_as_metis.py ${input_file} ${threads} > ${part_file}
+    /usr/bin/time -o ${temp_dir}/partition.time -f %e ${path_to_graph_schema}/tools/partition_graph_with_metis.py ${input_file} ${cluster_partitions} ${threads} > ${part_file}
     RES=$?
     if [[ $RES -ne 0 ]] ; then
 	>&2 echo "Got error code $RES while generating metis clusters"
