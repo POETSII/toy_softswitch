@@ -222,12 +222,13 @@ echo "buildTinselSettings, hardware_intrathread_send_enable, ${hardware_intrathr
 ###################################################################################
 ## Placement
 
-if [[ "${placement}" == "cluster*" ]] ; then
+cluster_pat="[cluster*]"
+if [[ "${placement}" == $cluster_pat ]] ; then
     if [[ "${placement}" == "cluster-core" ]] ; then
-        [[ "${threads}" -eq "1024" ]] || { 2>&1 echo "Error: currently need threads==1024 for cluster-core"; exit 1}
+        [[ "${threads}" -eq "1024" ]] || { 2>&1 echo "Error: currently need threads==1024 for cluster-core"; exit 1;}
         cluster_partitions="$((16*4))"
     elif [[ "${placement}" == "cluster-mbox" ]] ; then
-        [[ "${threads}" -eq "1024" ]] || { 2>&1 echo "Error: currently need threads==1024 for cluster-mbox"; exit 1}
+        [[ "${threads}" -eq "1024" ]] || { 2>&1 echo "Error: currently need threads==1024 for cluster-mbox"; exit 1;}
         cluster_partitions="16"
     elif [[ "${placement}" == "cluster-thread" ]] ; then
         cluster_partitions="${threads}"
@@ -244,7 +245,7 @@ if [[ "${placement}" == "cluster*" ]] ; then
         >&2 echo "Generating a new partitioning using metis with ${threads} clusters."
         >&2 echo "   Partitioned file=${part_file}."
     fi
-    /usr/bin/time -o ${temp_dir}/partition.time -f %e ${path_to_graph_schema}/tools/partition_graph_with_metis.py ${input_file} ${cluster_partitions} ${threads} > ${part_file}
+    /usr/bin/time -o ${temp_dir}/partition.time -f %e python3 ${path_to_graph_schema}/tools/partition_graph_with_metis.py ${input_file} ${cluster_partitions} ${threads} > ${part_file}
     RES=$?
     if [[ $RES -ne 0 ]] ; then
 	>&2 echo "Got error code $RES while generating metis clusters"
