@@ -143,6 +143,12 @@ fi
 if [[ verbose -gt 2 ]] ; then
     hostlink="${hostlink} -v"
 fi
+if [[ verbose -gt 3 ]] ; then
+    hostlink="${hostlink} -v"
+fi
+if [[ verbose -gt 4 ]] ; then
+    hostlink="${hostlink} -v"
+fi
 
 hostlink_measure_file=${temp_dir}/hostlink_measure.csv
 
