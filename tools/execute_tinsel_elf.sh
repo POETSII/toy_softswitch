@@ -134,15 +134,15 @@ hostlink="${path_to_tinsel}/bin/hostlink"
 if [[ "${timeout}" != "" ]] ; then
     hostlink="/usr/bin/timeout  -k ${timeout} ${timeout} ${hostlink}"
 fi
-#if [[ verbose -gt 0 ]] ; then
-#    hostlink="${hostlink} -v"
-#fi
-#if [[ verbose -gt 1 ]] ; then
-#    hostlink="${hostlink} -v"
-#fi
-#if [[ verbose -gt 2 ]] ; then
-#    hostlink="${hostlink} -v"
-#fi
+if [[ verbose -gt 0 ]] ; then
+    hostlink="${hostlink} -v"
+fi
+if [[ verbose -gt 1 ]] ; then
+    hostlink="${hostlink} -v"
+fi
+if [[ verbose -gt 2 ]] ; then
+    hostlink="${hostlink} -v"
+fi
 
 hostlink_measure_file=${temp_dir}/hostlink_measure.csv
 
