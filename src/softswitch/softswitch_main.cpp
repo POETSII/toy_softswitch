@@ -1,9 +1,10 @@
 #include "tinsel_api.hpp"
 
 #include "softswitch.hpp"
-
 //#include <cstdio>
 #include <cstdarg>
+
+typedef unsigned long size_t;
 
 //! Initialise data-structures (e.g. RTS)
 extern "C" void softswitch_init(PThreadContext *ctxt);
@@ -21,6 +22,10 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message);
 */
 extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets);
 
+extern "C" int vsnprintf (char * s, size_t n, const char * format, va_list arg );
+
+extern "C" void *memset( void *dest, int ch, size_t count );
+
 static PThreadContext *softswitch_getContext()
 {
   if(tinsel_myId() < softswitch_pthread_count){
@@ -31,6 +36,7 @@ static PThreadContext *softswitch_getContext()
 }
 
 #ifndef POETS_DISABLE_LOGGING
+
 
 static void append_vprintf(int &left, char *&dst, const char *msg, va_list v)
 {
@@ -58,9 +64,11 @@ extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
     if(level > ctxt->softLogLevel)
         return;
     
-    char buffer[256]={0};
+    char buffer[256];
     int left=sizeof(buffer)-3;
     char *dst=buffer;
+
+    for(int i=0; i<255; i++) { buffer[i] = 0; } //To-Do replace with something better
 
     append_printf(left, dst, "[%08x] SOFT : ", tinsel_myId());
     
@@ -83,10 +91,12 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
     if(level > ctxt->applLogLevel)
         return;
 
-    char buffer[256]={0};
+    char buffer[256];
     int left=sizeof(buffer)-3;
     char *dst=buffer;
     
+    for(int i=0; i<255; i++) { buffer[i] = 0; } //To-Do replace with something better
+
     const DeviceContext *deviceContext = ctxt->devices+ctxt->currentDevice;
     
     append_printf(left, dst, "[%08x] APPL / device (%u)=%s", tinsel_myId(), ctxt->currentDevice, deviceContext->id); 
