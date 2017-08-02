@@ -23,7 +23,7 @@ CFLAGS += -fomit-frame-pointer
 CFLAGS += -fno-default-inline
 CFLAGS += -fno-zero-initialized-in-bss
 CFLAGS +=  -flto
-CFLAGS += -fno-builtin-memcmp -fno-builtin-memcpy
+CFLAGS += -fno-builtin-memcmp -fno-builtin-memcpy -fno-builtin-memset
 
 ifeq ($(HARDWARE_ASSERT_ENABLE),0)
 CFLAGS += -DNDEBUG=1
