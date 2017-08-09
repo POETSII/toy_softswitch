@@ -17,7 +17,9 @@ DESIGN_ELF ?= true_tinsel.elf
 
 include $(TINSEL_ROOT)/globals.mk
 
-RV_CXX = riscv64-unknown-elf-g++
+RV_CXX = riscv32-unknown-elf-g++
+RV_OBJCOPY = riscv32-unknown-elf-objcopy
+RV_LD = riscv32-unknown-elf-ld
 
 # Local compiler flags
 CFLAGS = $(RV_CFLAGS)  -I $(INC) -Os -g  -Wno-unused-variable -Wno-unused-local-typedefs
