@@ -70,7 +70,7 @@ extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
 
     for(int i=0; i<255; i++) { buffer[i] = 0; } //To-Do replace with something better
 
-    append_printf(left, dst, "[%08x] SOFT : ", tinsel_myId());
+    append_printf(left, dst, "[%08x]@%d SOFT : ", tinsel_myId(), tinsel_CycleCount());
     
     va_list v;
     va_start(v,msg);
@@ -99,7 +99,7 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
 
     const DeviceContext *deviceContext = ctxt->devices+ctxt->currentDevice;
     
-    append_printf(left, dst, "[%08x] APPL / device (%u)=%s", tinsel_myId(), ctxt->currentDevice, deviceContext->id); 
+    append_printf(left, dst, "[%08x]@%u APPL / device (%u)=%s", tinsel_myId(), tinsel_CycleCount(), ctxt->currentDevice, deviceContext->id); 
 
     if(ctxt->currentHandlerType==1){
         auto pin=deviceContext->vtable->inputPins[ctxt->currentPin].name;
