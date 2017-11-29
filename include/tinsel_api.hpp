@@ -10,6 +10,9 @@ typedef enum {tinsel_CAN_SEND = 1, tinsel_CAN_RECV = 2} tinsel_WakeupCond;
 
 #include "tinsel_api_shim.hpp"
 
+//Return the counter value for the current cycles
+inline uint32_t tinsel_CycleCount();
+
 // Return a globally unique id for the calling thread
 inline uint32_t tinsel_myId();
 

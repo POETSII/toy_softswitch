@@ -12,6 +12,12 @@
 
 #define POETS_ALWAYS_INLINE inline __attribute__((always_inline))
 
+// Return a count of the clock cycle for the current device
+POETS_ALWAYS_INLINE uint32_t tinsel_CycleCount()
+{
+	return tinselCycleCount();
+}
+
 // Return a globally unique id for the calling thread
 POETS_ALWAYS_INLINE uint32_t tinsel_myId()
 {
