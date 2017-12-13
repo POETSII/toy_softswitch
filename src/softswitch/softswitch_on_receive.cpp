@@ -1,13 +1,24 @@
 #include "softswitch.hpp"
+#include "tinsel_api.hpp"
 
 #include <cstdio>
 #include <algorithm>
 
+#ifdef SOFTSWITCH_ENABLE_PROFILE
+#include "softswitch_perfmon.hpp"
+#endif
+
 extern "C" void tinsel_puts(const char *);
+
 
 //! Deal with the incoming message
 extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
 { 
+
+    #ifdef SOFTSWITCH_ENABLE_PROFILE
+    volatile unsigned tstart = tinsel_CycleCount();
+    #endif
+
     const packet_t *packet=(const packet_t*)message;
     const void *payload=(const char*)(packet+1);
     
@@ -96,7 +107,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
         eState=edge->edgeState;
         // If an edge has properties or state, you must deliver some
         assert(!pin->propertiesSize || eProps);
-        assert(!pin->stateSize || eState);
+	assert(!pin->stateSize || eState);
     }
     
             
@@ -108,6 +119,11 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
     ctxt->currentHandlerType=1;
     ctxt->currentPin=pinIndex;
 
+
+    #ifdef SOFTSWITCH_ENABLE_PROFILE
+    volatile unsigned hstart = tinsel_CycleCount();
+    #endif
+
     handler(
         ctxt->graphProps,
         dev->properties,
@@ -116,6 +132,10 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
         eState,     
         (void *)(packet+1)
     );
+
+    #ifdef SOFTSWITCH_ENABLE_PROFILE
+    ctxt->recvHandler_cnt += deltaCycles(hstart, tinsel_CycleCount());
+    #endif
 
     ctxt->currentHandlerType=0;
 
@@ -126,4 +146,8 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
     softswitch_softswitch_log(4, "softswitch_onReceive / new rts=%x\n", dev->rtsFlags);
     
     softswitch_softswitch_log(3, "softswitch_onReceive / end");
+
+    #ifdef SOFTSWITCH_ENABLE_PROFILE
+    ctxt->recvOverhead_cnt += deltaCycles(tstart, tinsel_CycleCount());
+    #endif
 }

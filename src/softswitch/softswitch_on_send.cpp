@@ -1,6 +1,11 @@
 #include "softswitch.hpp"
+#include "tinsel_api.hpp"
 
 #include <cstdio>
+
+#ifdef SOFTSWITCH_ENABLE_PROFILE
+#include "softswitch_perfmon.hpp"
+#endif
 
 extern "C" void tinsel_puts(const char *);
 
@@ -24,22 +29,30 @@ static unsigned right_most_one(uint32_t x)
 */
 extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets)
 { 
+
+    #ifdef SOFTSWITCH_ENABLE_PROFILE
+    volatile unsigned tstart = tinsel_CycleCount();
+    #endif
+
     softswitch_softswitch_log(3, "softswitch_onSend : begin");    
     
     numTargets=0;
     pTargets=0;
-    
+
     DeviceContext *dev = softswitch_PopRTS(ctxt);
     if(!dev){
         return 0;
     }
+
     
     const DeviceTypeVTable *vtable=dev->vtable;
 
     assert(dev->rtsFlags);
     unsigned pinIndex=right_most_one(dev->rtsFlags);
+
     
     softswitch_softswitch_log(4, "softswitch_onSend : device=%08x:%04x=%s, rtsFlags=%x, selected=%u", ctxt->threadId, dev->index,  dev->id, dev->rtsFlags, pinIndex);    
+
 
     send_handler_t handler=vtable->outputPins[pinIndex].sendHandler;
 
@@ -54,12 +67,21 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
 
     char *payload=(char*)((packet_t*)message+1);
 
+    #ifdef SOFTSWITCH_ENABLE_PROFILE
+    volatile unsigned hstart = tinsel_CycleCount();
+    #endif
+
     bool doSend=handler(
         ctxt->graphProps,
         dev->properties, 
         dev->state,
 	payload
     );
+
+    #ifdef SOFTSWITCH_ENABLE_PROFILE
+    volatile unsigned hend = tinsel_CycleCount();
+    ctxt->sendHandler_cnt += deltaCycles(hstart, hend);
+    #endif
 
     ctxt->currentHandlerType=0;
     
@@ -83,8 +105,6 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
       softswitch_softswitch_log(5, "softswitch_onSend :   payload[%u] = %u", i, (uint8_t)payload[i]);
     }
     
-
-    
     softswitch_softswitch_log(4, "softswitch_onSend : messageSize=%u, numTargets=%u, pTargets=%p", messageSize, numTargets, pTargets);    
 
     softswitch_softswitch_log(4, "softswitch_onSend : updating RTS");    
@@ -95,5 +115,9 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     
     softswitch_softswitch_log(3, "softswitch_onSend : end");    
     
+    #ifdef SOFTSWITCH_ENABLE_PROFILE
+    ctxt->sendOverhead_cnt += deltaCycles(tstart, tinsel_CycleCount());
+    #endif
+
     return messageSize;
 }

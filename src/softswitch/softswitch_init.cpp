@@ -4,10 +4,26 @@ extern "C" int strcmp ( const char * str1, const char * str2 );
 
 extern "C" void tinsel_puts(const char *m);
 
+#ifdef SOFTSWITCH_ENABLE_PROFILE
+void zeroProfileCounters(PThreadContext *ctxt)
+{
+    ctxt->waitToSend_cnt = 0;
+    ctxt->waitToRecv_cnt = 0;
+    ctxt->sendOverhead_cnt = 0;
+    ctxt->sendHandler_cnt = 0;
+    ctxt->recvOverhead_cnt = 0;
+    ctxt->recvHandler_cnt = 0;
+    ctxt->idle_cnt = 0;
+}
+#endif
+
 extern "C" void softswitch_init(PThreadContext *ctxt)
 {
-  
     softswitch_softswitch_log(2, "softswitch_init : begin");
+
+    #ifdef SOFTSWITCH_ENABLE_PROFILE
+    zeroProfileCounters(ctxt);
+    #endif
 
     assert(!ctxt->pointersAreRelative);
     /*

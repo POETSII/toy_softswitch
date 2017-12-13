@@ -183,7 +183,23 @@ typedef struct _PThreadContext
     // - edgeProperties -> softswitch_pthread_global_properties+(uintptr_t)edgeProperties
     // - edgeState -> softswitch_pthread_global_state+(uintptr_t)edgeState
     int pointersAreRelative;
+
+    //---------- performance counters -----------
+    #ifdef SOFTSWITCH_ENABLE_PROFILE
+    volatile unsigned startCycle_val; //value for the cycle counter at the start of the thread execution
+    volatile unsigned initDoneCycle_val; // value for the cycle counter once initialisation has been completed 
+    volatile unsigned waitToSend_cnt; //Number of cycles the thread spent waiting to send
+    volatile unsigned waitToRecv_cnt; //Number of cycles the thread spent waiting to receive 
+    volatile unsigned sendOverhead_cnt;//Number of cycles the thread processing a send packet (NOT including handler)
+    volatile unsigned sendHandler_cnt;//Number of cycles the thread spent in the send handler
+    volatile unsigned recvOverhead_cnt;//Number of cycles the thread processing a recv packet (NOT including handler)
+    volatile unsigned recvHandler_cnt;//Number of cycles the thread spend in the recv handler
+    volatile unsigned idle_cnt; //Number of cycles the thread spent idle 
+    #endif
+    //-------------------------------------------
+
 }PThreadContext;
+
 
 void softswitch_UpdateRTS(
     PThreadContext *pCtxt, DeviceContext *dCtxt
