@@ -358,10 +358,6 @@ extern "C" void softswitch_handler_exit(int code)
   const PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
   const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
  
-  #ifdef SOFTSWITCH_ENABLE_PROFILE
-  softswitch_handler_export_profiler_data_impl(ctxt);  
-  #endif
-
   tinselHostPut(prefix | 0xFF); // Magic value for key value pair
   
   uint32_t key=uint32_t(code);

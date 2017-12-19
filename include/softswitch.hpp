@@ -184,17 +184,17 @@ typedef struct _PThreadContext
     // - edgeState -> softswitch_pthread_global_state+(uintptr_t)edgeState
     int pointersAreRelative;
 
-    //---------- performance counters -----------
+    //---------- hierarchical performance counters -----------
     #ifdef SOFTSWITCH_ENABLE_PROFILE
-    volatile unsigned startCycle_val; //value for the cycle counter at the start of the thread execution
-    volatile unsigned initDoneCycle_val; // value for the cycle counter once initialisation has been completed 
-    volatile unsigned waitToSend_cnt; //Number of cycles the thread spent waiting to send
-    volatile unsigned waitToRecv_cnt; //Number of cycles the thread spent waiting to receive 
-    volatile unsigned sendOverhead_cnt;//Number of cycles the thread processing a send packet (NOT including handler)
-    volatile unsigned sendHandler_cnt;//Number of cycles the thread spent in the send handler
-    volatile unsigned recvOverhead_cnt;//Number of cycles the thread processing a recv packet (NOT including handler)
-    volatile unsigned recvHandler_cnt;//Number of cycles the thread spend in the recv handler
-    volatile unsigned idle_cnt; //Number of cycles the thread spent idle 
+    uint32_t thread_cycles_tstart; // value of the cycle count before the last flush. 
+    uint32_t thread_cycles; // total cycles for the entire thread 
+        uint32_t blocked_cycles; //the number of cycles the thread is blocked
+        uint32_t idle_cycles; //the number of cycles the thread is idle
+        uint32_t perfmon_cycles; //the number of cycles used for flushing the performance counters 
+        uint32_t send_cycles; //the number of cycles used in sending a message
+            uint32_t send_handler_cycles; //the number of cycles used in the send_handler 
+        uint32_t recv_cycles; //the number of cycles used in sending a message
+            uint32_t recv_handler_cycles; //the number of cycles used in the send_handler 
     #endif
     //-------------------------------------------
 

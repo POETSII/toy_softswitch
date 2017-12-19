@@ -31,7 +31,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
 { 
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
-    volatile unsigned tstart = tinsel_CycleCount();
+    uint32_t tstart = tinsel_CycleCount();
     #endif
 
     softswitch_softswitch_log(3, "softswitch_onSend : begin");    
@@ -68,7 +68,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     char *payload=(char*)((packet_t*)message+1);
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
-    volatile unsigned hstart = tinsel_CycleCount();
+    uint32_t hstart = tinsel_CycleCount();
     #endif
 
     bool doSend=handler(
@@ -79,8 +79,8 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     );
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
-    volatile unsigned hend = tinsel_CycleCount();
-    ctxt->sendHandler_cnt += deltaCycles(hstart, hend);
+    uint32_t hend = tinsel_CycleCount();
+    ctxt->send_handler_cycles += deltaCycles(hstart, hend);
     #endif
 
     ctxt->currentHandlerType=0;
@@ -116,7 +116,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     softswitch_softswitch_log(3, "softswitch_onSend : end");    
     
     #ifdef SOFTSWITCH_ENABLE_PROFILE
-    ctxt->sendOverhead_cnt += deltaCycles(tstart, tinsel_CycleCount());
+    ctxt->send_cycles += deltaCycles(tstart, tinsel_CycleCount());
     #endif
 
     return messageSize;

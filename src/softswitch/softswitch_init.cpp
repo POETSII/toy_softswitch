@@ -7,13 +7,15 @@ extern "C" void tinsel_puts(const char *m);
 #ifdef SOFTSWITCH_ENABLE_PROFILE
 void zeroProfileCounters(PThreadContext *ctxt)
 {
-    ctxt->waitToSend_cnt = 0;
-    ctxt->waitToRecv_cnt = 0;
-    ctxt->sendOverhead_cnt = 0;
-    ctxt->sendHandler_cnt = 0;
-    ctxt->recvOverhead_cnt = 0;
-    ctxt->recvHandler_cnt = 0;
-    ctxt->idle_cnt = 0;
+    ctxt->thread_cycles_tstart = 0;
+    ctxt->thread_cycles = 0;
+    ctxt->blocked_cycles = 0;
+    ctxt->idle_cycles = 0;
+    ctxt->perfmon_cycles = 0;
+    ctxt->send_cycles = 0;
+    ctxt->send_handler_cycles = 0;
+    ctxt->recv_cycles = 0;
+    ctxt->recv_handler_cycles = 0;
 }
 #endif
 

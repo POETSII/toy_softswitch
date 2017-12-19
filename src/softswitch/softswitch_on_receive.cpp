@@ -16,7 +16,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
 { 
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
-    volatile unsigned tstart = tinsel_CycleCount();
+    uint32_t tstart = tinsel_CycleCount();
     #endif
 
     const packet_t *packet=(const packet_t*)message;
@@ -121,7 +121,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
 
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
-    volatile unsigned hstart = tinsel_CycleCount();
+    uint32_t hstart = tinsel_CycleCount();
     #endif
 
     handler(
@@ -134,7 +134,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
     );
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
-    ctxt->recvHandler_cnt += deltaCycles(hstart, tinsel_CycleCount());
+    ctxt->recv_handler_cycles += deltaCycles(hstart, tinsel_CycleCount());
     #endif
 
     ctxt->currentHandlerType=0;
@@ -148,6 +148,6 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
     softswitch_softswitch_log(3, "softswitch_onReceive / end");
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
-    ctxt->recvOverhead_cnt += deltaCycles(tstart, tinsel_CycleCount());
+    ctxt->recv_cycles += deltaCycles(tstart, tinsel_CycleCount());
     #endif
 }

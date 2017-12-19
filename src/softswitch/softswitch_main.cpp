@@ -147,10 +147,6 @@ extern "C" void softswitch_main()
       while(1);
     }
 
-    #ifdef SOFTSWITCH_ENABLE_PROFILE
-    ctxt->startCycle_val = tinsel_CycleCount();
-    #endif
-    
     unsigned thisThreadId=tinsel_myId();
     
     softswitch_softswitch_log(1, "softswitch_main()");
@@ -171,14 +167,14 @@ extern "C" void softswitch_main()
         tinsel_mboxAlloc( tinsel_mboxSlot(i) );
     }
 
-    #ifdef SOFTSWITCH_ENABLE_PROFILE
-    volatile unsigned tstart = 0;
-    ctxt->initDoneCycle_val = tinsel_CycleCount();
-    #endif
-
     softswitch_softswitch_log(1, "starting loop");
 
+    #ifdef SOFTSWITCH_ENABLE_PROFILE
+    ctxt->thread_cycles_tstart = tinsel_CycleCount();
+    #endif
+
     while(1) {
+    
         softswitch_softswitch_log(2, "Loop top");
         
         // Only want to send if either:
@@ -187,19 +183,24 @@ extern "C" void softswitch_main()
         bool wantToSend = (currSendTodo>0) || softswitch_IsRTSReady(ctxt);
         softswitch_softswitch_log(3, "wantToSend=%d", wantToSend?1:0);
 
-
         // Run idle if:
         // - There is nothing to receive
         // - we aren't able to send or we don't want to send
         #ifdef SOFTSWITCH_ENABLE_PROFILE
-        volatile unsigned idle_start = tinsel_CycleCount();
+        uint32_t idle_start = tinsel_CycleCount();
         #endif
         while( (!tinsel_mboxCanRecv()) && (!wantToSend || !tinsel_mboxCanSend()) ){
-            if(!softswitch_onIdle(ctxt))
+            if(!softswitch_onIdle(ctxt)) {
                 break;
+	    }
         }
         #ifdef SOFTSWITCH_ENABLE_PROFILE
-        ctxt->idle_cnt += deltaCycles(idle_start, tinsel_CycleCount());
+	//The most likely idle part of the softswitch
+        ctxt->idle_cycles += deltaCycles(idle_start, tinsel_CycleCount()); 
+        ctxt->thread_cycles = deltaCycles(ctxt->thread_cycles_tstart, tinsel_CycleCount());
+        ctxt->thread_cycles_tstart = tinsel_CycleCount();
+        perfmon_flush_counters(ctxt);
+        ctxt->perfmon_cycles = deltaCycles(ctxt->thread_cycles_tstart, tinsel_CycleCount());
         #endif
 
 	//------------- Waiting to send ----------------------
@@ -207,11 +208,11 @@ extern "C" void softswitch_main()
         softswitch_softswitch_log(3, "waiting for send=%d, recv=%d", wakeupFlags&tinsel_CAN_SEND, (wakeupFlags&tinsel_CAN_RECV)?1:0);
 
         #ifdef SOFTSWITCH_ENABLE_PROFILE
-         volatile unsigned  blocked_start = tinsel_CycleCount(); 
+        uint32_t blocked_start = tinsel_CycleCount(); 
         #endif
         tinsel_mboxWaitUntil( (tinsel_WakeupCond) wakeupFlags );
         #ifdef SOFTSWITCH_ENABLE_PROFILE
-        ctxt->waitToSend_cnt += deltaCycles(blocked_start, tinsel_CycleCount()); 
+        ctxt->blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount()); 
         #endif
 	//---------------------------------------------------
 
@@ -298,12 +299,7 @@ extern "C" void softswitch_main()
                 currSendAddressList++;
             }
         }
-      
-	
-        #ifdef SOFTSWITCH_ENABLE_PROFILE
-        softswitch_handler_export_profiler_data_impl(ctxt);
-        #endif
-        
+       
         softswitch_softswitch_log(3, "loop bottom");
     }
 }
