@@ -60,8 +60,8 @@ extern "C" void perfmon_flush_counters(PThreadContext *ctxt)
     uint32_t recv_cycles = ctxt->recv_cycles; 
     uint32_t recv_handler_cycles = ctxt->recv_handler_cycles; 
 
-    // [thread id], total cycles, blocked cycles, idle cycles, perfmon cycles, send cycles, send handler cycles, recv cycles, recv handler cycles
-    append_profile_printf(left, dst, "[%08x], %u, %u, %u, %u, %u, %u, %u\n", tinsel_myId(), thread_cycles, blocked_cycles, idle_cycles, perfmon_cycles, send_cycles, send_handler_cycles, recv_cycles, recv_handler_cycles); 
+                                    // tid, total, blocked, idle, perfmon, send, sendhand, recv, recvhand
+    append_profile_printf(left, dst, "[%08x], %u, %u, %u, %u, %u, %u, %u, %u\n", tinsel_myId(), thread_cycles, blocked_cycles, idle_cycles, perfmon_cycles, send_cycles, send_handler_cycles, recv_cycles, recv_handler_cycles); 
 
     tinsel_puts(buffer);
     
@@ -75,31 +75,5 @@ extern "C" void perfmon_flush_counters(PThreadContext *ctxt)
     ctxt->recv_cycles = 0;
     ctxt->recv_handler_cycles = 0;
 }
-
-//! Exports the softswitch profiled data to host
-//extern "C" void softswitch_handler_export_profiler_data_impl(const PThreadContext *ctxt)
-//{
-//    assert(ctxt->currentDevice < ctxt->numDevices); // Current device must be in range
-//
-//    char buffer[256];
-//    int left=sizeof(buffer)-3;
-//    char *dst=buffer;
-//    
-//    for(int i=0; i<255; i++) { buffer[i] = 0; } //To-Do replace with something better
-//
-//    const DeviceContext *deviceContext = ctxt->devices+ctxt->currentDevice;
-//    
-//    unsigned send_handler = ctxt->sendHandler_cnt;
-//    unsigned send_overhead = ctxt->sendOverhead_cnt;
-//    unsigned recv_handler = ctxt->recvHandler_cnt;
-//    unsigned recv_overhead = ctxt->recvOverhead_cnt;
-//    unsigned idle = ctxt->idle_cnt;
-//
-//    //Outputs the performance counters in the following format
-//    // [thread id], device, initialisation count, blocked count, send overhead count, send handler count, recv overhead count, recv handler count, idle count
-//    append_profile_printf(left, dst, "[%08x], %u, %u, %u, %u, %u, %u, %u\n", tinsel_myId(), deltaCycles(ctxt->startCycle_val, ctxt->initDoneCycle_val), ctxt->waitToSend_cnt + ctxt->waitToRecv_cnt, send_overhead - send_handler, send_handler, recv_overhead - recv_handler, recv_handler, idle); 
-//
-//    tinsel_puts(buffer);
-//}
 
 #endif

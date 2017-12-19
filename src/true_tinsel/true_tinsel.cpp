@@ -306,8 +306,7 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
   IIIIIILL  // 8-bits of line
   IIIIIILL  // 8-bits of line
   IIIIIILL  // 8-bits of line (MSB)
-
-  
+ 
 
   Assertion (with no further information):
   IIIIIIFE  // Magic number for assertion
@@ -335,6 +334,40 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
   IIIIIIVV  // 8-bits of value
   IIIIIIVV  // 8-bits of value (MSB)
 
+  Performance Counter Flush
+  IIIIII20  // Magic number for perfmon flush
+  IIIIIITC  // 8-bits of total cycles (LSB)
+  IIIIIITC  // 8-bits of total cycles 
+  IIIIIITC  // 8-bits of total cycles 
+  IIIIIITC  // 8-bits of total cycles (MSB)
+  IIIIIIBC  // 8-bits of blocked cycles (LSB)
+  IIIIIIBC  // 8-bits of blocked cycles 
+  IIIIIIBC  // 8-bits of blocked cycles 
+  IIIIIIBC  // 8-bits of blocked cycles (MSB)
+  IIIIIIDC  // 8-bits of idle cycles (LSB)
+  IIIIIIDC  // 8-bits of idle cycles 
+  IIIIIIDC  // 8-bits of idle cycles 
+  IIIIIIDC  // 8-bits of idle cycles (MSB)
+  IIIIIIPC  // 8-bits of perfmon cycles (LSB)
+  IIIIIIPC  // 8-bits of perfmon cycles 
+  IIIIIIPC  // 8-bits of perfmon cycles 
+  IIIIIIPC  // 8-bits of perfmon cycles (MSB)
+  IIIIIISC  // 8-bits of send cycles (LSB)
+  IIIIIISC  // 8-bits of send cycles 
+  IIIIIISC  // 8-bits of send cycles 
+  IIIIIISC  // 8-bits of send cycles (MSB)
+  IIIIIISH  // 8-bits of send handler cycles (LSB)
+  IIIIIISH  // 8-bits of send handler cycles 
+  IIIIIISH  // 8-bits of send handler cycles 
+  IIIIIISH  // 8-bits of send handler cycles (MSB)
+  IIIIIIRC  // 8-bits of recv cycles (LSB)
+  IIIIIIRC  // 8-bits of recv cycles 
+  IIIIIIRC  // 8-bits of recv cycles 
+  IIIIIIRC  // 8-bits of recv cycles (MSB)
+  IIIIIIRH  // 8-bits of recv handler cycles (LSB)
+  IIIIIIRH  // 8-bits of recv handler cycles 
+  IIIIIIRH  // 8-bits of recv handler cycles 
+  IIIIIIRH  // 8-bits of recv handler cycles (MSB)
 
 */
 
@@ -350,6 +383,77 @@ extern "C" void tinsel_puts(const char *msg){
     msg++;
   }
 }
+
+#ifdef SOFTSWITCH_ENABLE_PROFILE
+extern "C" void softswitch_flush_perfmon() {
+  uint32_t prefix=tinselId()<<8;
+  
+  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
+
+  tinselHostPut(prefix | 0x20); // Magic value for performance counter flush
+
+  uint32_t thread_cycles = ctxt->thread_cycles;
+  uint32_t blocked_cycles = ctxt->blocked_cycles;
+  uint32_t idle_cycles = ctxt->idle_cycles;
+  uint32_t perfmon_cycles = ctxt->perfmon_cycles;
+  uint32_t send_cycles = ctxt->send_cycles;
+  uint32_t send_handler_cycles = ctxt->send_handler_cycles;
+  uint32_t recv_cycles = ctxt->recv_cycles;
+  uint32_t recv_handler_cycles = ctxt->recv_handler_cycles;
+
+  tinselHostPut(prefix | ((thread_cycles>>0)&0xFF));
+  tinselHostPut(prefix | ((thread_cycles>>8)&0xFF));
+  tinselHostPut(prefix | ((thread_cycles>>16)&0xFF));
+  tinselHostPut(prefix | ((thread_cycles>>24)&0xFF));
+
+  tinselHostPut(prefix | ((blocked_cycles>>0)&0xFF));
+  tinselHostPut(prefix | ((blocked_cycles>>8)&0xFF));
+  tinselHostPut(prefix | ((blocked_cycles>>16)&0xFF));
+  tinselHostPut(prefix | ((blocked_cycles>>24)&0xFF));
+
+  tinselHostPut(prefix | ((idle_cycles>>0)&0xFF));
+  tinselHostPut(prefix | ((idle_cycles>>8)&0xFF));
+  tinselHostPut(prefix | ((idle_cycles>>16)&0xFF));
+  tinselHostPut(prefix | ((idle_cycles>>24)&0xFF));
+
+  tinselHostPut(prefix | ((perfmon_cycles>>0)&0xFF));
+  tinselHostPut(prefix | ((perfmon_cycles>>8)&0xFF));
+  tinselHostPut(prefix | ((perfmon_cycles>>16)&0xFF));
+  tinselHostPut(prefix | ((perfmon_cycles>>24)&0xFF));
+
+  tinselHostPut(prefix | ((send_cycles>>0)&0xFF));
+  tinselHostPut(prefix | ((send_cycles>>8)&0xFF));
+  tinselHostPut(prefix | ((send_cycles>>16)&0xFF));
+  tinselHostPut(prefix | ((send_cycles>>24)&0xFF));
+
+  tinselHostPut(prefix | ((send_handler_cycles>>0)&0xFF));
+  tinselHostPut(prefix | ((send_handler_cycles>>8)&0xFF));
+  tinselHostPut(prefix | ((send_handler_cycles>>16)&0xFF));
+  tinselHostPut(prefix | ((send_handler_cycles>>24)&0xFF));
+
+  tinselHostPut(prefix | ((recv_cycles>>0)&0xFF));
+  tinselHostPut(prefix | ((recv_cycles>>8)&0xFF));
+  tinselHostPut(prefix | ((recv_cycles>>16)&0xFF));
+  tinselHostPut(prefix | ((recv_cycles>>24)&0xFF));
+
+  tinselHostPut(prefix | ((recv_handler_cycles>>0)&0xFF));
+  tinselHostPut(prefix | ((recv_handler_cycles>>8)&0xFF));
+  tinselHostPut(prefix | ((recv_handler_cycles>>16)&0xFF));
+  tinselHostPut(prefix | ((recv_handler_cycles>>24)&0xFF));
+
+  //Reset the performance counters
+  ctxt->thread_cycles = 0;
+  ctxt->blocked_cycles = 0;
+  ctxt->idle_cycles = 0;
+  ctxt->perfmon_cycles = 0;
+  ctxt->send_cycles = 0;
+  ctxt->send_handler_cycles = 0;
+  ctxt->recv_cycles = 0;
+  ctxt->recv_handler_cycles = 0;
+
+}
+#endif
 
 extern "C" void softswitch_handler_exit(int code)
 {

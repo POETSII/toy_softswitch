@@ -243,6 +243,10 @@ void softswitch_handler_exit(int code);
 #endif
 void softswitch_softswitch_log_impl(int level, const char *msg, ...);
 
+//! Used to flush the performance counters
+#ifdef SOFTSWITCH_ENABLE_PROFILE
+void softswitch_flush_perfmon();
+#endif
 
 // Send a key-value pair back to the host.
 void softswitch_handler_export_key_value(uint32_t key, uint32_t value);

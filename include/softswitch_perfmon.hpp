@@ -15,6 +15,5 @@ extern "C" void append_profile_printf(int &left, char *&dst, const char *msg, ..
 
 //! Exports the softswitch profiled data to host
 extern "C" void perfmon_flush_counters(PThreadContext *ctxt);
-//extern "C" void softswitch_handler_export_profiler_data_impl(const PThreadContext *ctxt);
 
 #endif

@@ -199,7 +199,8 @@ extern "C" void softswitch_main()
         ctxt->idle_cycles += deltaCycles(idle_start, tinsel_CycleCount()); 
         ctxt->thread_cycles = deltaCycles(ctxt->thread_cycles_tstart, tinsel_CycleCount());
         ctxt->thread_cycles_tstart = tinsel_CycleCount();
-        perfmon_flush_counters(ctxt);
+        //perfmon_flush_counters(ctxt);
+        softswitch_flush_perfmon();
         ctxt->perfmon_cycles = deltaCycles(ctxt->thread_cycles_tstart, tinsel_CycleCount());
         #endif
 
