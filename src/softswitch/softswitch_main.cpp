@@ -171,6 +171,7 @@ extern "C" void softswitch_main()
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
     ctxt->thread_cycles_tstart = tinsel_CycleCount();
+    bool start_perfmon = false;
     #endif
 
     while(1) {
@@ -191,18 +192,23 @@ extern "C" void softswitch_main()
         #endif
         while( (!tinsel_mboxCanRecv()) && (!wantToSend || !tinsel_mboxCanSend()) ){
             if(!softswitch_onIdle(ctxt)) {
+                #ifdef SOFTSWITCH_ENABLE_PROFILE
+                if(start_perfmon) {
+                    ctxt->idle_cycles += deltaCycles(idle_start, tinsel_CycleCount()); 
+                    ctxt->thread_cycles = deltaCycles(ctxt->thread_cycles_tstart, tinsel_CycleCount());
+                    volatile uint32_t thread_start = tinsel_CycleCount();
+                    ctxt->thread_cycles_tstart = thread_start;
+                    softswitch_flush_perfmon();
+                    ctxt->perfmon_cycles = deltaCycles(thread_start, tinsel_CycleCount());
+                }
+                start_perfmon = true;
+                #endif
                 break;
 	    }
         }
-        #ifdef SOFTSWITCH_ENABLE_PROFILE
-	//The most likely idle part of the softswitch
-        ctxt->idle_cycles += deltaCycles(idle_start, tinsel_CycleCount()); 
-        ctxt->thread_cycles = deltaCycles(ctxt->thread_cycles_tstart, tinsel_CycleCount());
-        ctxt->thread_cycles_tstart = tinsel_CycleCount();
-        //perfmon_flush_counters(ctxt);
-        softswitch_flush_perfmon();
-        ctxt->perfmon_cycles = deltaCycles(ctxt->thread_cycles_tstart, tinsel_CycleCount());
-        #endif
+        //#ifdef SOFTSWITCH_ENABLE_PROFILE
+        //ctxt->idle_cycles += deltaCycles(idle_start, tinsel_CycleCount()); 
+        //#endif
 
 	//------------- Waiting to send ----------------------
         uint32_t wakeupFlags = wantToSend ? (tinsel_CAN_RECV|tinsel_CAN_SEND) : tinsel_CAN_RECV;
