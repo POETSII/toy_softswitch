@@ -4,12 +4,12 @@ CXXFLAGS += -g -std=c++11 -W -Wall -I include -pthread -Wno-unused-parameter
 #CXXFLAGS += -fsanitize=undefined -fno-sanitize-recover
 
 lib/tinsel_mpi.a : src/tinsel/tinsel_on_mpi.cpp src/tinsel/tinsel_mbox.hpp
-	mpicxx $(CXXFLAGS) -c -o src/tinsel/tinsel_on_mpi.o src/tinsel/tinsel_on_mpi.cpp
+	mpicxx $(CXXFLAGS)  -DNO_TINSEL_API_SHIM=1 -c -o src/tinsel/tinsel_on_mpi.o src/tinsel/tinsel_on_mpi.cpp
 	mkdir -p lib
 	ar rcs $@ src/tinsel/tinsel_on_mpi.o
 	
 lib/tinsel_unix.a : src/tinsel/tinsel_on_unix.cpp src/tinsel/tinsel_mbox.hpp
-	g++ $(CXXFLAGS) -c -o src/tinsel/tinsel_on_unix.o src/tinsel/tinsel_on_unix.cpp
+	g++ $(CXXFLAGS)  -DNO_TINSEL_API_SHIM=1 -c -o src/tinsel/tinsel_on_unix.o src/tinsel/tinsel_on_unix.cpp
 	mkdir -p lib
 	ar rcs $@ src/tinsel/tinsel_on_unix.o
 
