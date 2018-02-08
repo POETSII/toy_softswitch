@@ -172,6 +172,8 @@ extern "C" void softswitch_main()
     #ifdef SOFTSWITCH_ENABLE_PROFILE
     ctxt->thread_cycles_tstart = tinsel_CycleCount();
     bool start_perfmon = false;
+    unsigned perfmon_flush_rate_cnt = 1;
+    const unsigned perfmon_flush_rate = SOFTSWITCH_ENABLE_PROFILE;
     #endif
 
     while(1) {
@@ -195,11 +197,16 @@ extern "C" void softswitch_main()
                 #ifdef SOFTSWITCH_ENABLE_PROFILE
                 if(start_perfmon) {
                     ctxt->idle_cycles += deltaCycles(idle_start, tinsel_CycleCount()); 
-                    ctxt->thread_cycles = deltaCycles(ctxt->thread_cycles_tstart, tinsel_CycleCount());
-                    volatile uint32_t thread_start = tinsel_CycleCount();
-                    ctxt->thread_cycles_tstart = thread_start;
-                    softswitch_flush_perfmon();
-                    ctxt->perfmon_cycles = deltaCycles(thread_start, tinsel_CycleCount());
+                    if(perfmon_flush_rate_cnt < perfmon_flush_rate) {
+                        perfmon_flush_rate_cnt = perfmon_flush_rate_cnt + 1;
+                    } else {
+                        ctxt->thread_cycles = deltaCycles(ctxt->thread_cycles_tstart, tinsel_CycleCount());
+                        volatile uint32_t thread_start = tinsel_CycleCount();
+                        ctxt->thread_cycles_tstart = thread_start;
+                        softswitch_flush_perfmon();
+                        ctxt->perfmon_cycles = deltaCycles(thread_start, tinsel_CycleCount());
+                        perfmon_flush_rate_cnt = 1;
+                    }
                 }
                 start_perfmon = true;
                 #endif
