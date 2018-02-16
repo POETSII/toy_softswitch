@@ -340,10 +340,14 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
   IIIIIITC  // 8-bits of total cycles 
   IIIIIITC  // 8-bits of total cycles 
   IIIIIITC  // 8-bits of total cycles (MSB)
-  IIIIIIBC  // 8-bits of blocked cycles (LSB)
-  IIIIIIBC  // 8-bits of blocked cycles 
-  IIIIIIBC  // 8-bits of blocked cycles 
-  IIIIIIBC  // 8-bits of blocked cycles (MSB)
+  IIIIIIBC  // 8-bits of send_blocked cycles (LSB)
+  IIIIIIBC  // 8-bits of send_blocked cycles 
+  IIIIIIBC  // 8-bits of send_blocked cycles 
+  IIIIIIBC  // 8-bits of send_blocked cycles (MSB)
+  IIIIIIBC  // 8-bits of recv_blocked cycles (LSB)
+  IIIIIIBC  // 8-bits of recv_blocked cycles 
+  IIIIIIBC  // 8-bits of recv_blocked cycles 
+  IIIIIIBC  // 8-bits of recv_blocked cycles (MSB)
   IIIIIIDC  // 8-bits of idle cycles (LSB)
   IIIIIIDC  // 8-bits of idle cycles 
   IIIIIIDC  // 8-bits of idle cycles 
@@ -394,7 +398,8 @@ extern "C" void softswitch_flush_perfmon() {
   tinselHostPut(prefix | 0x20); // Magic value for performance counter flush
 
   uint32_t thread_cycles = ctxt->thread_cycles;
-  uint32_t blocked_cycles = ctxt->blocked_cycles;
+  uint32_t send_blocked_cycles = ctxt->send_blocked_cycles;
+  uint32_t recv_blocked_cycles = ctxt->recv_blocked_cycles;
   uint32_t idle_cycles = ctxt->idle_cycles;
   uint32_t perfmon_cycles = ctxt->perfmon_cycles;
   uint32_t send_cycles = ctxt->send_cycles;
@@ -407,10 +412,15 @@ extern "C" void softswitch_flush_perfmon() {
   tinselHostPut(prefix | ((thread_cycles>>16)&0xFF));
   tinselHostPut(prefix | ((thread_cycles>>24)&0xFF));
 
-  tinselHostPut(prefix | ((blocked_cycles>>0)&0xFF));
-  tinselHostPut(prefix | ((blocked_cycles>>8)&0xFF));
-  tinselHostPut(prefix | ((blocked_cycles>>16)&0xFF));
-  tinselHostPut(prefix | ((blocked_cycles>>24)&0xFF));
+  tinselHostPut(prefix | ((send_blocked_cycles>>0)&0xFF));
+  tinselHostPut(prefix | ((send_blocked_cycles>>8)&0xFF));
+  tinselHostPut(prefix | ((send_blocked_cycles>>16)&0xFF));
+  tinselHostPut(prefix | ((send_blocked_cycles>>24)&0xFF));
+
+  tinselHostPut(prefix | ((recv_blocked_cycles>>0)&0xFF));
+  tinselHostPut(prefix | ((recv_blocked_cycles>>8)&0xFF));
+  tinselHostPut(prefix | ((recv_blocked_cycles>>16)&0xFF));
+  tinselHostPut(prefix | ((recv_blocked_cycles>>24)&0xFF));
 
   tinselHostPut(prefix | ((idle_cycles>>0)&0xFF));
   tinselHostPut(prefix | ((idle_cycles>>8)&0xFF));
@@ -444,7 +454,8 @@ extern "C" void softswitch_flush_perfmon() {
 
   //Reset the performance counters
   ctxt->thread_cycles = 0;
-  ctxt->blocked_cycles = 0;
+  ctxt->send_blocked_cycles = 0;
+  ctxt->recv_blocked_cycles = 0;
   ctxt->idle_cycles = 0;
   ctxt->perfmon_cycles = 0;
   ctxt->send_cycles = 0;

@@ -213,9 +213,6 @@ extern "C" void softswitch_main()
                 break;
 	    }
         }
-        //#ifdef SOFTSWITCH_ENABLE_PROFILE
-        //ctxt->idle_cycles += deltaCycles(idle_start, tinsel_CycleCount()); 
-        //#endif
 
 	//------------- Waiting to send ----------------------
         uint32_t wakeupFlags = wantToSend ? (tinsel_CAN_RECV|tinsel_CAN_SEND) : tinsel_CAN_RECV;
@@ -226,7 +223,12 @@ extern "C" void softswitch_main()
         #endif
         tinsel_mboxWaitUntil( (tinsel_WakeupCond) wakeupFlags );
         #ifdef SOFTSWITCH_ENABLE_PROFILE
-        ctxt->blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount()); 
+	if(wakeupFlags&tinsel_CAN_SEND) {
+        	ctxt->send_blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount()); 
+	}
+	if((wakeupFlags&tinsel_CAN_RECV)?1:0) {
+        	ctxt->recv_blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount()); 
+	}
         #endif
 	//---------------------------------------------------
 
