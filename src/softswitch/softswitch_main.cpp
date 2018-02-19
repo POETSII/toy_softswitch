@@ -223,10 +223,9 @@ extern "C" void softswitch_main()
         #endif
         tinsel_mboxWaitUntil( (tinsel_WakeupCond) wakeupFlags );
         #ifdef SOFTSWITCH_ENABLE_PROFILE
-	if(wakeupFlags&tinsel_CAN_SEND) {
+	if(wantToSend & tinsel_CAN_SEND) {
         	ctxt->send_blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount()); 
-	}
-	if((wakeupFlags&tinsel_CAN_RECV)?1:0) {
+	} else {
         	ctxt->recv_blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount()); 
 	}
         #endif
