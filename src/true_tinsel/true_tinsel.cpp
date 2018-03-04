@@ -273,6 +273,13 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
 
 #endif
 
+/* Wrapper around the tinselUartTryPut() function, keeps trying until successful. 
+*/
+void tinsel_UartTryPut(uint8_t x) {
+  while(!tinselUartTryPut(x)) { }
+  return; 
+}
+
 
 /* Protocol: 
 
@@ -374,15 +381,16 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
 // Print a string back via stdout channel (i.e. hostlink)
 extern "C" void tinsel_puts(const char *msg){
   uint32_t prefix=tinselId()<<8;
-  tinselHostPut(prefix | 1);
+  tinsel_UartTryPut(prefix | 1);
   while(1){
-    tinselHostPut(prefix | uint32_t(uint8_t(*msg)));
+    tinsel_UartTryPut(prefix | uint32_t(uint8_t(*msg)));
     if(!*msg){
       break;
     }
     msg++;
   }
 }
+
 
 #ifdef SOFTSWITCH_ENABLE_PROFILE
 extern "C" void softswitch_flush_perfmon() {
@@ -391,7 +399,7 @@ extern "C" void softswitch_flush_perfmon() {
   PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
   const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
 
-  tinselHostPut(prefix | 0x20); // Magic value for performance counter flush
+  tinsel_UartTryPut(prefix | 0x20); // Magic value for performance counter flush
 
   uint32_t thread_cycles = ctxt->thread_cycles;
   uint32_t blocked_cycles = ctxt->blocked_cycles;
@@ -402,45 +410,45 @@ extern "C" void softswitch_flush_perfmon() {
   uint32_t recv_cycles = ctxt->recv_cycles;
   uint32_t recv_handler_cycles = ctxt->recv_handler_cycles;
 
-  tinselHostPut(prefix | ((thread_cycles>>0)&0xFF));
-  tinselHostPut(prefix | ((thread_cycles>>8)&0xFF));
-  tinselHostPut(prefix | ((thread_cycles>>16)&0xFF));
-  tinselHostPut(prefix | ((thread_cycles>>24)&0xFF));
+  tinsel_UartTryPut(prefix | ((thread_cycles>>0)&0xFF));
+  tinsel_UartTryPut(prefix | ((thread_cycles>>8)&0xFF));
+  tinsel_UartTryPut(prefix | ((thread_cycles>>16)&0xFF));
+  tinsel_UartTryPut(prefix | ((thread_cycles>>24)&0xFF));
 
-  tinselHostPut(prefix | ((blocked_cycles>>0)&0xFF));
-  tinselHostPut(prefix | ((blocked_cycles>>8)&0xFF));
-  tinselHostPut(prefix | ((blocked_cycles>>16)&0xFF));
-  tinselHostPut(prefix | ((blocked_cycles>>24)&0xFF));
+  tinsel_UartTryPut(prefix | ((blocked_cycles>>0)&0xFF));
+  tinsel_UartTryPut(prefix | ((blocked_cycles>>8)&0xFF));
+  tinsel_UartTryPut(prefix | ((blocked_cycles>>16)&0xFF));
+  tinsel_UartTryPut(prefix | ((blocked_cycles>>24)&0xFF));
 
-  tinselHostPut(prefix | ((idle_cycles>>0)&0xFF));
-  tinselHostPut(prefix | ((idle_cycles>>8)&0xFF));
-  tinselHostPut(prefix | ((idle_cycles>>16)&0xFF));
-  tinselHostPut(prefix | ((idle_cycles>>24)&0xFF));
+  tinsel_UartTryPut(prefix | ((idle_cycles>>0)&0xFF));
+  tinsel_UartTryPut(prefix | ((idle_cycles>>8)&0xFF));
+  tinsel_UartTryPut(prefix | ((idle_cycles>>16)&0xFF));
+  tinsel_UartTryPut(prefix | ((idle_cycles>>24)&0xFF));
 
-  tinselHostPut(prefix | ((perfmon_cycles>>0)&0xFF));
-  tinselHostPut(prefix | ((perfmon_cycles>>8)&0xFF));
-  tinselHostPut(prefix | ((perfmon_cycles>>16)&0xFF));
-  tinselHostPut(prefix | ((perfmon_cycles>>24)&0xFF));
+  tinsel_UartTryPut(prefix | ((perfmon_cycles>>0)&0xFF));
+  tinsel_UartTryPut(prefix | ((perfmon_cycles>>8)&0xFF));
+  tinsel_UartTryPut(prefix | ((perfmon_cycles>>16)&0xFF));
+  tinsel_UartTryPut(prefix | ((perfmon_cycles>>24)&0xFF));
 
-  tinselHostPut(prefix | ((send_cycles>>0)&0xFF));
-  tinselHostPut(prefix | ((send_cycles>>8)&0xFF));
-  tinselHostPut(prefix | ((send_cycles>>16)&0xFF));
-  tinselHostPut(prefix | ((send_cycles>>24)&0xFF));
+  tinsel_UartTryPut(prefix | ((send_cycles>>0)&0xFF));
+  tinsel_UartTryPut(prefix | ((send_cycles>>8)&0xFF));
+  tinsel_UartTryPut(prefix | ((send_cycles>>16)&0xFF));
+  tinsel_UartTryPut(prefix | ((send_cycles>>24)&0xFF));
 
-  tinselHostPut(prefix | ((send_handler_cycles>>0)&0xFF));
-  tinselHostPut(prefix | ((send_handler_cycles>>8)&0xFF));
-  tinselHostPut(prefix | ((send_handler_cycles>>16)&0xFF));
-  tinselHostPut(prefix | ((send_handler_cycles>>24)&0xFF));
+  tinsel_UartTryPut(prefix | ((send_handler_cycles>>0)&0xFF));
+  tinsel_UartTryPut(prefix | ((send_handler_cycles>>8)&0xFF));
+  tinsel_UartTryPut(prefix | ((send_handler_cycles>>16)&0xFF));
+  tinsel_UartTryPut(prefix | ((send_handler_cycles>>24)&0xFF));
 
-  tinselHostPut(prefix | ((recv_cycles>>0)&0xFF));
-  tinselHostPut(prefix | ((recv_cycles>>8)&0xFF));
-  tinselHostPut(prefix | ((recv_cycles>>16)&0xFF));
-  tinselHostPut(prefix | ((recv_cycles>>24)&0xFF));
+  tinsel_UartTryPut(prefix | ((recv_cycles>>0)&0xFF));
+  tinsel_UartTryPut(prefix | ((recv_cycles>>8)&0xFF));
+  tinsel_UartTryPut(prefix | ((recv_cycles>>16)&0xFF));
+  tinsel_UartTryPut(prefix | ((recv_cycles>>24)&0xFF));
 
-  tinselHostPut(prefix | ((recv_handler_cycles>>0)&0xFF));
-  tinselHostPut(prefix | ((recv_handler_cycles>>8)&0xFF));
-  tinselHostPut(prefix | ((recv_handler_cycles>>16)&0xFF));
-  tinselHostPut(prefix | ((recv_handler_cycles>>24)&0xFF));
+  tinsel_UartTryPut(prefix | ((recv_handler_cycles>>0)&0xFF));
+  tinsel_UartTryPut(prefix | ((recv_handler_cycles>>8)&0xFF));
+  tinsel_UartTryPut(prefix | ((recv_handler_cycles>>16)&0xFF));
+  tinsel_UartTryPut(prefix | ((recv_handler_cycles>>24)&0xFF));
 
   //Reset the performance counters
   ctxt->thread_cycles = 0;
@@ -462,13 +470,13 @@ extern "C" void softswitch_handler_exit(int code)
   const PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
   const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
  
-  tinselHostPut(prefix | 0xFF); // Magic value for key value pair
+  tinsel_UartTryPut(prefix | 0xFF); // Magic value for key value pair
   
   uint32_t key=uint32_t(code);
-  tinselHostPut(prefix | ((key>>0)&0xFF));
-  tinselHostPut(prefix | ((key>>8)&0xFF));
-  tinselHostPut(prefix | ((key>>16)&0xFF));
-  tinselHostPut(prefix | ((key>>24)&0xFF));
+  tinsel_UartTryPut(prefix | ((key>>0)&0xFF));
+  tinsel_UartTryPut(prefix | ((key>>8)&0xFF));
+  tinsel_UartTryPut(prefix | ((key>>16)&0xFF));
+  tinsel_UartTryPut(prefix | ((key>>24)&0xFF));
 }
 
 extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value)
@@ -478,22 +486,22 @@ extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value
   const PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
   const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
 
-  tinselHostPut(prefix | 0x10); // Magic value for key value pair
+  tinsel_UartTryPut(prefix | 0x10); // Magic value for key value pair
   const char *tmp=dev->id;
   while(1){
-    tinselHostPut(prefix | *tmp);
+    tinsel_UartTryPut(prefix | *tmp);
     if(*tmp==0)
       break;
     tmp++;
   }
-  tinselHostPut(prefix | ((key>>0)&0xFF));
-  tinselHostPut(prefix | ((key>>8)&0xFF));
-  tinselHostPut(prefix | ((key>>16)&0xFF));
-  tinselHostPut(prefix | ((key>>24)&0xFF));
-  tinselHostPut(prefix | ((value>>0)&0xFF));
-  tinselHostPut(prefix | ((value>>8)&0xFF));
-  tinselHostPut(prefix | ((value>>16)&0xFF));
-  tinselHostPut(prefix | ((value>>24)&0xFF));
+  tinsel_UartTryPut(prefix | ((key>>0)&0xFF));
+  tinsel_UartTryPut(prefix | ((key>>8)&0xFF));
+  tinsel_UartTryPut(prefix | ((key>>16)&0xFF));
+  tinsel_UartTryPut(prefix | ((key>>24)&0xFF));
+  tinsel_UartTryPut(prefix | ((value>>0)&0xFF));
+  tinsel_UartTryPut(prefix | ((value>>8)&0xFF));
+  tinsel_UartTryPut(prefix | ((value>>16)&0xFF));
+  tinsel_UartTryPut(prefix | ((value>>24)&0xFF));
 }
 
 extern "C" void __assert_func (const char *file, int line, const char *assertFunc,const char *cond)
@@ -501,20 +509,20 @@ extern "C" void __assert_func (const char *file, int line, const char *assertFun
   uint32_t prefix=tinselId()<<8;
 
   #ifndef SOFTSWITCH_MINIMAL_ASSERT
-  tinselHostPut(prefix | 0xFD); // Code for an assert with info
+  tinsel_UartTryPut(prefix | 0xFD); // Code for an assert with info
   while(1){
     char ch=*file++;
-    tinselHostPut(prefix | uint8_t(ch));
+    tinsel_UartTryPut(prefix | uint8_t(ch));
     if(ch==0){
       break;
     }
   }
-  tinselHostPut(prefix | ((line>>0)&0xFF));
-  tinselHostPut(prefix | ((line>>8)&0xFF));
-  tinselHostPut(prefix | ((line>>16)&0xFF));
-  tinselHostPut(prefix | ((line>>24)&0xFF));
+  tinsel_UartTryPut(prefix | ((line>>0)&0xFF));
+  tinsel_UartTryPut(prefix | ((line>>8)&0xFF));
+  tinsel_UartTryPut(prefix | ((line>>16)&0xFF));
+  tinsel_UartTryPut(prefix | ((line>>24)&0xFF));
   #else
-  tinselHostPut(prefix | 0xFE); // Code for an assert
+  tinsel_UartTryPut(prefix | 0xFE); // Code for an assert
   #endif
   tinsel_mboxWaitUntil((tinsel_WakeupCond)0);
   while(1);
