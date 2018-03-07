@@ -20,7 +20,7 @@ include $(TINSEL_ROOT)/globals.mk
 RV_CXX = riscv64-unknown-elf-g++
 
 # Local compiler flags
-CFLAGS = $(RV_CFLAGS)  -I $(INC) -Os -g  -Wno-unused-variable -Wno-unused-local-typedefs
+CFLAGS = $(RV_CFLAGS)  -I $(INC) -Os -g -Wno-unused-variable -Wno-unused-local-typedefs
 CFLAGS += -fomit-frame-pointer
 CFLAGS += -fno-default-inline
 CFLAGS += -fno-zero-initialized-in-bss
@@ -63,7 +63,7 @@ CFLAGS += -DSOFTSWITCH_ENABLE_SEND_OVER_RECV=1
 endif
 
 #LDFLAGS = -melf32lriscv -G 0 
-LDFLAGS = -Wl,-melf32lriscv  -Wl,--gpsize=0  -Wl,-Bstatic
+LDFLAGS = -Wl,-melf32lriscv  -Wl,--gpsize=0  -Wl,-Bstatic 
 
 CFLAGS += -I ${POETS_TOY_SOFTSWITCH_ROOT}/include
 CFLAGS += -I ${POETS_TOY_SOFTSWITCH_ROOT}/src/true_tinsel
