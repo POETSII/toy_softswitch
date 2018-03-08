@@ -8,6 +8,15 @@
 #include <cstdarg>
 #include <math.h>
 
+#define HOST_MSG_PAYLOAD 8 //TODO: This should really only be defined in one place
+//Format of messages recv to the host
+typedef struct {
+  uint8_t padding;
+  uint32_t id;
+  uint8_t size;
+  uint8_t payload[HOST_MSG_PAYLOAD];
+} hostMsg;
+
 inline float bin2fp(uint32_t f) { return *((float*) &f); }
 
 extern "C" void * memcpy ( void * destination, const void * source, size_t num )
@@ -408,16 +417,62 @@ void tinsel_UartTryPut(uint8_t x) {
 */
 
 // Print a string back via stdout channel (i.e. hostlink)
-extern "C" void tinsel_puts(const char *msg){
-  uint32_t prefix=tinselId()<<8;
-  tinsel_UartTryPut(prefix | 1);
-  while(1){
-    tinsel_UartTryPut(prefix | uint32_t(uint8_t(*msg)));
-    if(!*msg){
-      break;
-    }
-    msg++;
+//extern "C" void tinsel_puts(const char *msg){
+//  uint32_t prefix=tinselId()<<8;
+//  tinsel_UartTryPut(prefix | 1);
+//  while(1){
+//    tinsel_UartTryPut(prefix | uint32_t(uint8_t(*msg)));
+//    if(!*msg){
+//      break;
+//    }
+//    msg++;
+//  }
+//}
+
+
+extern "C" void tinsel_puts(const char *txt){
+  
+  //Each message uses 2 flits
+  tinsel_mboxSetLen(0);
+
+  //get host id
+  int host = tinselHostId();
+
+  //prepare the message 
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(0);
+  msg->id = tinselId();  
+
+  //keep track of if this is the first message sent (for magic number)
+  uint8_t first = 1;
+
+  //keep adding txt to payload until its gone
+  while(*txt) {
+
+    uint8_t size = 0;
+    // prepare the payload
+    for(uint8_t i=0; i<HOST_MSG_PAYLOAD; i++) {
+       if(i==0 && first) {
+          msg->payload[0] = 0x01; //magic number for stdout
+          first = 0; //no longer the first message
+       } else {
+          msg->payload[i] = uint8_t(*txt);
+          if(!*txt) {
+            break;
+          } 
+          txt++;
+       }
+       size++;
+    }    
+    msg->size = size; 
+
+    //send the message    
+    tinselWaitUntil(TINSEL_CAN_SEND);
+    tinselSend(host, msg); 
+ 
+    //move onto the next chunk of the message
   }
+
+  return; 
 }
 
 
@@ -492,45 +547,111 @@ extern "C" void softswitch_flush_perfmon() {
 }
 #endif
 
+//extern "C" void softswitch_handler_exit(int code)
+//{
+//  uint32_t prefix=tinselId()<<8;
+//
+//  const PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+//  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
+// 
+//  tinsel_UartTryPut(prefix | 0xFF); // Magic value for key value pair
+//  
+//  uint32_t key=uint32_t(code);
+//  tinsel_UartTryPut(prefix | ((key>>0)&0xFF));
+//  tinsel_UartTryPut(prefix | ((key>>8)&0xFF));
+//  tinsel_UartTryPut(prefix | ((key>>16)&0xFF));
+//  tinsel_UartTryPut(prefix | ((key>>24)&0xFF));
+//}
+
+
 extern "C" void softswitch_handler_exit(int code)
 {
-  uint32_t prefix=tinselId()<<8;
+  //Each message uses 1 flit
+  tinsel_mboxSetLen(0);
 
-  const PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
-  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
- 
-  tinsel_UartTryPut(prefix | 0xFF); // Magic value for key value pair
-  
+  //get host id
+  int host = tinselHostId();
+
+  //prepare the message 
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(0);
+  msg->id = tinselId();  
+
+  //Add the payload
   uint32_t key=uint32_t(code);
-  tinsel_UartTryPut(prefix | ((key>>0)&0xFF));
-  tinsel_UartTryPut(prefix | ((key>>8)&0xFF));
-  tinsel_UartTryPut(prefix | ((key>>16)&0xFF));
-  tinsel_UartTryPut(prefix | ((key>>24)&0xFF));
+  msg->size = 5;
+  msg->payload[0] = 0xFF; //Magic value for exit 
+  msg->payload[1] = ((key>>0)&0xFF); 
+  msg->payload[2] = ((key>>8)&0xFF); 
+  msg->payload[3] = ((key>>16)&0xFF);
+  msg->payload[4] = ((key>>24)&0xFF);
+
+  //send the message    
+  tinselWaitUntil(TINSEL_CAN_SEND);
+  tinselSend(host, msg); 
+  
+  return;
 }
+
+//extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value)
+//{
+//  uint32_t prefix=tinselId()<<8;
+//
+//  const PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+//  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
+//
+//  tinsel_UartTryPut(prefix | 0x10); // Magic value for key value pair
+//  const char *tmp=dev->id;
+//  while(1){
+//    tinsel_UartTryPut(prefix | *tmp);
+//    if(*tmp==0)
+//      break;
+//    tmp++;
+//  }
+//  tinsel_UartTryPut(prefix | ((key>>0)&0xFF));
+//  tinsel_UartTryPut(prefix | ((key>>8)&0xFF));
+//  tinsel_UartTryPut(prefix | ((key>>16)&0xFF));
+//  tinsel_UartTryPut(prefix | ((key>>24)&0xFF));
+//  tinsel_UartTryPut(prefix | ((value>>0)&0xFF));
+//  tinsel_UartTryPut(prefix | ((value>>8)&0xFF));
+//  tinsel_UartTryPut(prefix | ((value>>16)&0xFF));
+//  tinsel_UartTryPut(prefix | ((value>>24)&0xFF));
+//}
 
 extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value)
 {
-  uint32_t prefix=tinselId()<<8;
+  //Each message uses 1 flit
+  tinsel_mboxSetLen(0);
 
-  const PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
-  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
+  //get host id
+  int host = tinselHostId();
 
-  tinsel_UartTryPut(prefix | 0x10); // Magic value for key value pair
-  const char *tmp=dev->id;
-  while(1){
-    tinsel_UartTryPut(prefix | *tmp);
-    if(*tmp==0)
-      break;
-    tmp++;
-  }
-  tinsel_UartTryPut(prefix | ((key>>0)&0xFF));
-  tinsel_UartTryPut(prefix | ((key>>8)&0xFF));
-  tinsel_UartTryPut(prefix | ((key>>16)&0xFF));
-  tinsel_UartTryPut(prefix | ((key>>24)&0xFF));
-  tinsel_UartTryPut(prefix | ((value>>0)&0xFF));
-  tinsel_UartTryPut(prefix | ((value>>8)&0xFF));
-  tinsel_UartTryPut(prefix | ((value>>16)&0xFF));
-  tinsel_UartTryPut(prefix | ((value>>24)&0xFF));
+  //prepare the message 
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(0);
+  msg->id = tinselId();  
+
+  //Add the payload
+  msg->size = 8;
+  msg->payload[0] = 0x10; //magic value keyvalue export 
+  msg->payload[1] = ((key>>0)&0xFF); 
+  msg->payload[2] = ((key>>8)&0xFF); 
+  msg->payload[3] = ((key>>16)&0xFF);
+  msg->payload[4] = ((key>>24)&0xFF);
+  msg->payload[5] = ((value>>0)&0xFF);
+  msg->payload[6] = ((value>>8)&0xFF);
+  msg->payload[7] = ((value>>16)&0xFF);
+
+  //send the message    
+  tinselWaitUntil(TINSEL_CAN_SEND);
+  tinselSend(host, msg); 
+
+  msg->size = 1;
+  msg->payload[0] = ((value>>16)&0xFF);
+
+  //send the message    
+  tinselWaitUntil(TINSEL_CAN_SEND);
+  tinselSend(host, msg); 
+
+  return;
 }
 
 extern "C" void __assert_func (const char *file, int line, const char *assertFunc,const char *cond)

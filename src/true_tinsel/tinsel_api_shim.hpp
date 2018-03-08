@@ -95,7 +95,12 @@ POETS_ALWAYS_INLINE unsigned tinsel_mboxSlotCount()
 
 inline void tinsel_hostPut(uint32_t x);
 
-
+// Get globally unique thread id of host
+// (Host board has X coordinate of 0 and Y coordinate on mesh rim)
+POETS_ALWAYS_INLINE uint32_t tinsel_HostId()
+{
+  return tinselHostId();
+}
 
 
 #endif
