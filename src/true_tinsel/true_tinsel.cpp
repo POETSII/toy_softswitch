@@ -247,11 +247,9 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
       switch(type){
 	case 'u':
         delta=vsnprintf_unsigned(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
-	//delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
         break;
       case 'd':
         delta=vsnprintf_signed(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,signed));
-	//delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,signed));
         break;
       case 'x':
         delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
@@ -407,20 +405,6 @@ void tinsel_UartTryPut(uint8_t x) {
   IIIIIIRH  // 8-bits of recv handler cycles (MSB)
 
 */
-
-// Print a string back via stdout channel (i.e. hostlink)
-//extern "C" void tinsel_puts(const char *msg){
-//  uint32_t prefix=tinselId()<<8;
-//  tinsel_UartTryPut(prefix | 1);
-//  while(1){
-//    tinsel_UartTryPut(prefix | uint32_t(uint8_t(*msg)));
-//    if(!*msg){
-//      break;
-//    }
-//    msg++;
-//  }
-//}
-
 
 extern "C" void tinsel_puts(const char *txt){
   
@@ -667,24 +651,57 @@ extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value
 
 extern "C" void __assert_func (const char *file, int line, const char *assertFunc,const char *cond)
 {
-  uint32_t prefix=tinselId()<<8;
+  //Each message uses 1 flit
+  tinsel_mboxSetLen(HOSTMSG_FLIT_SIZE);
+
+  //get host id
+  int host = tinselHostId();
+
+  //wait until we can send
+  tinselWaitUntil(TINSEL_CAN_SEND);
+
+  //prepare the message 
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_TINSEL_SLOT);
+  msg->id = tinselId();  
+  uint16_t msgsize = 1;
 
   #ifndef SOFTSWITCH_MINIMAL_ASSERT
-  tinsel_UartTryPut(prefix | 0xFD); // Code for an assert with info
+  msg->payload[0] = 0xFD; // magic number for assert 
+
   while(1){
     char ch=*file++;
-    tinsel_UartTryPut(prefix | uint8_t(ch));
+    msg->payload[msgsize] = uint8_t(ch);
+    
     if(ch==0){
-      break;
+       break;
     }
+
+    //if we are at the msgpayload size we need to transmit
+    if(msgsize == HOST_MSG_PAYLOAD) {
+       msg->size = msgsize;
+
+       // send the message
+       tinselSend(host, msg);
+       
+       //wait until we can send
+       tinselWaitUntil(TINSEL_CAN_SEND); 
+    }
+    msgsize++;
   }
-  tinsel_UartTryPut(prefix | ((line>>0)&0xFF));
-  tinsel_UartTryPut(prefix | ((line>>8)&0xFF));
-  tinsel_UartTryPut(prefix | ((line>>16)&0xFF));
-  tinsel_UartTryPut(prefix | ((line>>24)&0xFF));
-  #else
-  tinsel_UartTryPut(prefix | 0xFE); // Code for an assert
+  msg->size = msgsize;
+  
+  // send the message
+  tinselSend(host, msg);
+
+  #else 
+
+  msg->payload[0] = 0xFE; // magic number for assert 
+  msg->size = 1;
+
+  // send the message
+  tinselSend(host, msg);
   #endif
+
   tinsel_mboxWaitUntil((tinsel_WakeupCond)0);
   while(1);
 }
