@@ -432,6 +432,7 @@ extern "C" void tinsel_puts(const char *txt){
 
   //prepare the message 
   volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_TINSEL_SLOT);
+  tinselWaitUntil(TINSEL_CAN_SEND);
   msg->id = tinselId();  
 
   //keep track of if this is the first message sent (for magic number)
@@ -440,6 +441,7 @@ extern "C" void tinsel_puts(const char *txt){
   //keep adding txt to payload until its gone
   while(*txt) {
 
+    tinselWaitUntil(TINSEL_CAN_SEND);
     uint8_t size = 0;
     // prepare the payload
     for(uint8_t i=0; i<HOST_MSG_PAYLOAD; i++) {
@@ -461,10 +463,9 @@ extern "C" void tinsel_puts(const char *txt){
     if(!*txt) {
       if(size < HOST_MSG_PAYLOAD) {
         //There is space to send the terminator
-        msg->payload[size+1] = 0;
+        msg->payload[size+1] = '\0';
         msg->size = size + 1;
         //send the message    
-        tinselWaitUntil(TINSEL_CAN_SEND);
         tinselSend(host, msg); 
         return;
       } else {
@@ -472,18 +473,16 @@ extern "C" void tinsel_puts(const char *txt){
         //So send an additional message
 
         //send the current message    
-        tinselWaitUntil(TINSEL_CAN_SEND);
         tinselSend(host, msg); 
-        msg->size = 1;
-        msg->payload[0] = 0; 
-        //send the message containing only the terminator
         tinselWaitUntil(TINSEL_CAN_SEND);
+        msg->size = 1;
+        msg->payload[0] = '\0'; 
+        //send the message containing only the terminator
         tinselSend(host, msg); 
         return;
       }
     } else {
       //send the message    
-      tinselWaitUntil(TINSEL_CAN_SEND);
       tinselSend(host, msg); 
     }
  
@@ -590,6 +589,9 @@ extern "C" void softswitch_handler_exit(int code)
   //get host id
   int host = tinselHostId();
 
+  //wait until we can send
+  tinselWaitUntil(TINSEL_CAN_SEND);
+
   //prepare the message 
   volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_TINSEL_SLOT);
   msg->id = tinselId();  
@@ -607,7 +609,6 @@ extern "C" void softswitch_handler_exit(int code)
   msg->payload[7] = 0;
 
   //send the message    
-  tinselWaitUntil(TINSEL_CAN_SEND);
   tinselSend(host, msg); 
   
   return;
@@ -646,12 +647,15 @@ extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value
   //get host id
   int host = tinselHostId();
 
+  //wait until we can send
+  tinselWaitUntil(TINSEL_CAN_SEND);
+
   //prepare the message 
   volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_TINSEL_SLOT);
   msg->id = tinselId();  
 
   //Add the payload
-  msg->size = 8;
+  msg->size = 9;
   msg->payload[0] = 0x10; //magic value keyvalue export 
   msg->payload[1] = ((key>>0)&0xFF); 
   msg->payload[2] = ((key>>8)&0xFF); 
@@ -660,18 +664,12 @@ extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value
   msg->payload[5] = ((value>>0)&0xFF);
   msg->payload[6] = ((value>>8)&0xFF);
   msg->payload[7] = ((value>>16)&0xFF);
+  msg->payload[8] = ((value>>24)&0xFF);
+  msg->payload[9] = 0;
 
   //send the message    
-  tinselWaitUntil(TINSEL_CAN_SEND);
-  tinselSend(host, msg); 
-
-  msg->size = 1;
-  msg->payload[0] = ((value>>16)&0xFF);
-
-  //send the message    
-  tinselWaitUntil(TINSEL_CAN_SEND);
-  tinselSend(host, msg); 
-
+  //tinselSend(host, msg); 
+  
   return;
 }
 
