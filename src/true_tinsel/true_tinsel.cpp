@@ -3,19 +3,11 @@
 #include "softswitch_perfmon.hpp"
 #include "tinsel_api.hpp"
 #include "tinsel_api_shim.hpp"
+#include "hostMsg.hpp"
 
 #include <stddef.h>
 #include <cstdarg>
 #include <math.h>
-
-#define HOST_MSG_PAYLOAD 8 //TODO: This should really only be defined in one place
-//Format of messages recv to the host
-typedef struct {
-  uint32_t padding;
-  uint32_t id;
-  uint8_t size;
-  uint8_t payload[HOST_MSG_PAYLOAD];
-} hostMsg;
 
 inline float bin2fp(uint32_t f) { return *((float*) &f); }
 
@@ -433,13 +425,13 @@ void tinsel_UartTryPut(uint8_t x) {
 extern "C" void tinsel_puts(const char *txt){
   
   //Each message uses 2 flits
-  tinsel_mboxSetLen(0);
+  tinsel_mboxSetLen(HOSTMSG_FLIT_SIZE);
 
   //get host id
   int host = tinselHostId();
 
   //prepare the message 
-  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(0);
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_TINSEL_SLOT);
   msg->id = tinselId();  
 
   //keep track of if this is the first message sent (for magic number)
@@ -593,13 +585,13 @@ extern "C" void softswitch_flush_perfmon() {
 extern "C" void softswitch_handler_exit(int code)
 {
   //Each message uses 1 flit
-  tinsel_mboxSetLen(0);
+  tinsel_mboxSetLen(HOSTMSG_FLIT_SIZE);
 
   //get host id
   int host = tinselHostId();
 
   //prepare the message 
-  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(0);
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_TINSEL_SLOT);
   msg->id = tinselId();  
 
   //Add the payload
@@ -649,13 +641,13 @@ extern "C" void softswitch_handler_exit(int code)
 extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value)
 {
   //Each message uses 1 flit
-  tinsel_mboxSetLen(0);
+  tinsel_mboxSetLen(HOSTMSG_FLIT_SIZE);
 
   //get host id
   int host = tinselHostId();
 
   //prepare the message 
-  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(0);
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_TINSEL_SLOT);
   msg->id = tinselId();  
 
   //Add the payload
