@@ -11,7 +11,7 @@
 #define HOST_MSG_PAYLOAD 8 //TODO: This should really only be defined in one place
 //Format of messages recv to the host
 typedef struct {
-  uint8_t padding;
+  uint32_t padding;
   uint32_t id;
   uint8_t size;
   uint8_t payload[HOST_MSG_PAYLOAD];
@@ -465,9 +465,35 @@ extern "C" void tinsel_puts(const char *txt){
     }    
     msg->size = size; 
 
-    //send the message    
-    tinselWaitUntil(TINSEL_CAN_SEND);
-    tinselSend(host, msg); 
+    //send terminating null
+    if(!*txt) {
+      if(size < HOST_MSG_PAYLOAD) {
+        //There is space to send the terminator
+        msg->payload[size+1] = 0;
+        msg->size = size + 1;
+        //send the message    
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        tinselSend(host, msg); 
+        return;
+      } else {
+        //There is no space in the current message
+        //So send an additional message
+
+        //send the current message    
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        tinselSend(host, msg); 
+        msg->size = 1;
+        msg->payload[0] = 0; 
+        //send the message containing only the terminator
+        tinselWaitUntil(TINSEL_CAN_SEND);
+        tinselSend(host, msg); 
+        return;
+      }
+    } else {
+      //send the message    
+      tinselWaitUntil(TINSEL_CAN_SEND);
+      tinselSend(host, msg); 
+    }
  
     //move onto the next chunk of the message
   }
@@ -584,6 +610,9 @@ extern "C" void softswitch_handler_exit(int code)
   msg->payload[2] = ((key>>8)&0xFF); 
   msg->payload[3] = ((key>>16)&0xFF);
   msg->payload[4] = ((key>>24)&0xFF);
+  msg->payload[5] = 0;
+  msg->payload[6] = 0;
+  msg->payload[7] = 0;
 
   //send the message    
   tinselWaitUntil(TINSEL_CAN_SEND);
