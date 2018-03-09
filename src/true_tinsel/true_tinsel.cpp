@@ -495,12 +495,9 @@ extern "C" void tinsel_puts(const char *txt){
 
 #ifdef SOFTSWITCH_ENABLE_PROFILE
 extern "C" void softswitch_flush_perfmon() {
-  uint32_t prefix=tinselId()<<8;
-  
+
   PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
   const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
-
-  tinsel_UartTryPut(prefix | 0x20); // Magic value for performance counter flush
 
   uint32_t thread_cycles = ctxt->thread_cycles;
   uint32_t blocked_cycles = ctxt->blocked_cycles;
@@ -511,45 +508,81 @@ extern "C" void softswitch_flush_perfmon() {
   uint32_t recv_cycles = ctxt->recv_cycles;
   uint32_t recv_handler_cycles = ctxt->recv_handler_cycles;
 
-  tinsel_UartTryPut(prefix | ((thread_cycles>>0)&0xFF));
-  tinsel_UartTryPut(prefix | ((thread_cycles>>8)&0xFF));
-  tinsel_UartTryPut(prefix | ((thread_cycles>>16)&0xFF));
-  tinsel_UartTryPut(prefix | ((thread_cycles>>24)&0xFF));
+  //Each message uses 1 flit
+  tinselSetLen(HOSTMSG_FLIT_SIZE);
 
-  tinsel_UartTryPut(prefix | ((blocked_cycles>>0)&0xFF));
-  tinsel_UartTryPut(prefix | ((blocked_cycles>>8)&0xFF));
-  tinsel_UartTryPut(prefix | ((blocked_cycles>>16)&0xFF));
-  tinsel_UartTryPut(prefix | ((blocked_cycles>>24)&0xFF));
+  //get host id
+  int host = tinselHostId();
 
-  tinsel_UartTryPut(prefix | ((idle_cycles>>0)&0xFF));
-  tinsel_UartTryPut(prefix | ((idle_cycles>>8)&0xFF));
-  tinsel_UartTryPut(prefix | ((idle_cycles>>16)&0xFF));
-  tinsel_UartTryPut(prefix | ((idle_cycles>>24)&0xFF));
+  //wait until we can send
+  tinselWaitUntil(TINSEL_CAN_SEND);
 
-  tinsel_UartTryPut(prefix | ((perfmon_cycles>>0)&0xFF));
-  tinsel_UartTryPut(prefix | ((perfmon_cycles>>8)&0xFF));
-  tinsel_UartTryPut(prefix | ((perfmon_cycles>>16)&0xFF));
-  tinsel_UartTryPut(prefix | ((perfmon_cycles>>24)&0xFF));
+  //prepare the message 
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_TINSEL_SLOT);
+  msg->id = tinselId();  
+  msg->size = 13;
 
-  tinsel_UartTryPut(prefix | ((send_cycles>>0)&0xFF));
-  tinsel_UartTryPut(prefix | ((send_cycles>>8)&0xFF));
-  tinsel_UartTryPut(prefix | ((send_cycles>>16)&0xFF));
-  tinsel_UartTryPut(prefix | ((send_cycles>>24)&0xFF));
+  msg->payload[0] = 0x20; //Magic value for perfmon data
 
-  tinsel_UartTryPut(prefix | ((send_handler_cycles>>0)&0xFF));
-  tinsel_UartTryPut(prefix | ((send_handler_cycles>>8)&0xFF));
-  tinsel_UartTryPut(prefix | ((send_handler_cycles>>16)&0xFF));
-  tinsel_UartTryPut(prefix | ((send_handler_cycles>>24)&0xFF));
+  msg->payload[1] = ((thread_cycles>>0)&0xFF);
+  msg->payload[2] = ((thread_cycles>>8)&0xFF);
+  msg->payload[3] = ((thread_cycles>>16)&0xFF);
+  msg->payload[4] = ((thread_cycles>>24)&0xFF);
 
-  tinsel_UartTryPut(prefix | ((recv_cycles>>0)&0xFF));
-  tinsel_UartTryPut(prefix | ((recv_cycles>>8)&0xFF));
-  tinsel_UartTryPut(prefix | ((recv_cycles>>16)&0xFF));
-  tinsel_UartTryPut(prefix | ((recv_cycles>>24)&0xFF));
+  msg->payload[5] = ((blocked_cycles>>0)&0xFF);
+  msg->payload[6] = ((blocked_cycles>>8)&0xFF);
+  msg->payload[7] = ((blocked_cycles>>16)&0xFF);
+  msg->payload[8] = ((blocked_cycles>>24)&0xFF);
 
-  tinsel_UartTryPut(prefix | ((recv_handler_cycles>>0)&0xFF));
-  tinsel_UartTryPut(prefix | ((recv_handler_cycles>>8)&0xFF));
-  tinsel_UartTryPut(prefix | ((recv_handler_cycles>>16)&0xFF));
-  tinsel_UartTryPut(prefix | ((recv_handler_cycles>>24)&0xFF));
+  msg->payload[9] = ((idle_cycles>>0)&0xFF);
+  msg->payload[10] = ((idle_cycles>>8)&0xFF);
+  msg->payload[11] = ((idle_cycles>>16)&0xFF);
+  msg->payload[12] = ((idle_cycles>>24)&0xFF);
+
+  //send the message    
+  tinselSend(host, msg); 
+  
+  //wait until we can send
+  tinselWaitUntil(TINSEL_CAN_SEND);
+
+  msg->size = 13; 
+
+  msg->payload[0] = ((perfmon_cycles>>0)&0xFF);
+  msg->payload[1] = ((perfmon_cycles>>8)&0xFF);
+  msg->payload[2] = ((perfmon_cycles>>16)&0xFF);
+  msg->payload[3] = ((perfmon_cycles>>24)&0xFF);
+
+  msg->payload[4] = ((send_cycles>>0)&0xFF);
+  msg->payload[5] = ((send_cycles>>8)&0xFF);
+  msg->payload[6] = ((send_cycles>>16)&0xFF);
+  msg->payload[7] = ((send_cycles>>24)&0xFF);
+
+  msg->payload[8] = ((send_handler_cycles>>0)&0xFF);
+  msg->payload[9] = ((send_handler_cycles>>8)&0xFF);
+  msg->payload[10] = ((send_handler_cycles>>16)&0xFF);
+  msg->payload[11] = ((send_handler_cycles>>24)&0xFF);
+
+  msg->payload[12] = ((recv_cycles>>0)&0xFF);
+
+  //send the message    
+  tinselSend(host, msg); 
+  
+  //wait until we can send
+  tinselWaitUntil(TINSEL_CAN_SEND);
+
+  msg->size = 7; 
+
+  msg->payload[0] = ((recv_cycles>>8)&0xFF);
+  msg->payload[1] = ((recv_cycles>>16)&0xFF);
+  msg->payload[2] = ((recv_cycles>>24)&0xFF);
+
+  msg->payload[3] = ((recv_handler_cycles>>0)&0xFF);
+  msg->payload[4] = ((recv_handler_cycles>>8)&0xFF);
+  msg->payload[5] = ((recv_handler_cycles>>16)&0xFF);
+  msg->payload[6] = ((recv_handler_cycles>>24)&0xFF);
+
+  //send the message    
+  tinselSend(host, msg); 
 
   //Reset the performance counters
   ctxt->thread_cycles = 0;
@@ -563,22 +596,6 @@ extern "C" void softswitch_flush_perfmon() {
 
 }
 #endif
-
-//extern "C" void softswitch_handler_exit(int code)
-//{
-//  uint32_t prefix=tinselId()<<8;
-//
-//  const PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
-//  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
-// 
-//  tinsel_UartTryPut(prefix | 0xFF); // Magic value for key value pair
-//  
-//  uint32_t key=uint32_t(code);
-//  tinsel_UartTryPut(prefix | ((key>>0)&0xFF));
-//  tinsel_UartTryPut(prefix | ((key>>8)&0xFF));
-//  tinsel_UartTryPut(prefix | ((key>>16)&0xFF));
-//  tinsel_UartTryPut(prefix | ((key>>24)&0xFF));
-//}
 
 
 extern "C" void softswitch_handler_exit(int code)
@@ -613,31 +630,6 @@ extern "C" void softswitch_handler_exit(int code)
   
   return;
 }
-
-//extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value)
-//{
-//  uint32_t prefix=tinselId()<<8;
-//
-//  const PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
-//  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
-//
-//  tinsel_UartTryPut(prefix | 0x10); // Magic value for key value pair
-//  const char *tmp=dev->id;
-//  while(1){
-//    tinsel_UartTryPut(prefix | *tmp);
-//    if(*tmp==0)
-//      break;
-//    tmp++;
-//  }
-//  tinsel_UartTryPut(prefix | ((key>>0)&0xFF));
-//  tinsel_UartTryPut(prefix | ((key>>8)&0xFF));
-//  tinsel_UartTryPut(prefix | ((key>>16)&0xFF));
-//  tinsel_UartTryPut(prefix | ((key>>24)&0xFF));
-//  tinsel_UartTryPut(prefix | ((value>>0)&0xFF));
-//  tinsel_UartTryPut(prefix | ((value>>8)&0xFF));
-//  tinsel_UartTryPut(prefix | ((value>>16)&0xFF));
-//  tinsel_UartTryPut(prefix | ((value>>24)&0xFF));
-//}
 
 extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value)
 {
