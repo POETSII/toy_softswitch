@@ -161,9 +161,9 @@ extern "C" void softswitch_main()
     uint32_t currSize=0;
 
     // Assumption: all buffers are owned by software, so we have to give them to mailbox
-    // We only keep hold of slot 0
+    // We only keep hold of slot 0 and tinsel_mboxSlotCount() [for host communication]
     softswitch_softswitch_log(2, "Giving %d-1 receive buffers to mailbox", tinsel_mboxSlotCount());
-    for(unsigned i=1; i<tinsel_mboxSlotCount(); i++){
+    for(unsigned i=1; i<tinsel_mboxSlotCount()-1; i++){
         tinsel_mboxAlloc( tinsel_mboxSlot(i) );
     }
 
@@ -279,6 +279,7 @@ extern "C" void softswitch_main()
 
                 // Prepare a new packet to send
                 currSize=softswitch_onSend(ctxt, (void*)sendBuffer, currSendTodo, currSendAddressList);
+                ctxt->currentSize = currSize; // update the current size in the thread context
 
             }else{
                 // We still have more addresses to deliver the last message to

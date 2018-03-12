@@ -173,6 +173,7 @@ typedef struct _PThreadContext
     uint32_t currentDevice; 
     int currentHandlerType;   // 0 = None, 1 = Recv, 2 = Send
     uint32_t currentPin; // Index of the pin (for recv and send)
+    uint32_t currentSize; // The current message size (in bytes)
     
     // If true, then the softswitch must go through and turn relative
     // pointers during init. All relevant pointers should only be read/written

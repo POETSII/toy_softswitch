@@ -406,16 +406,21 @@ void tinsel_UartTryPut(uint8_t x) {
 
 */
 
+// txt the message to be sent over stdout
 extern "C" void tinsel_puts(const char *txt){
+
+  // Get the thread and device contexts
+  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
   
   //Each message uses 2 flits
-  tinsel_mboxSetLen(HOSTMSG_FLIT_SIZE);
+  tinselSetLen(HOSTMSG_FLIT_SIZE);
 
   //get host id
   int host = tinselHostId();
 
   //prepare the message 
-  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_TINSEL_SLOT);
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_MBOX_SLOT);
   tinselWaitUntil(TINSEL_CAN_SEND);
   msg->id = tinselId();  
 
@@ -450,6 +455,7 @@ extern "C" void tinsel_puts(const char *txt){
         msg->payload[size+1] = '\0';
         msg->size = size + 1;
         //send the message    
+        tinselWaitUntil(TINSEL_CAN_SEND);
         tinselSend(host, msg); 
         return;
       } else {
@@ -457,21 +463,27 @@ extern "C" void tinsel_puts(const char *txt){
         //So send an additional message
 
         //send the current message    
+        tinselWaitUntil(TINSEL_CAN_SEND);
         tinselSend(host, msg); 
         tinselWaitUntil(TINSEL_CAN_SEND);
         msg->size = 1;
         msg->payload[0] = '\0'; 
         //send the message containing only the terminator
+        tinselWaitUntil(TINSEL_CAN_SEND);
         tinselSend(host, msg); 
         return;
       }
     } else {
       //send the message    
+      tinselWaitUntil(TINSEL_CAN_SEND);
       tinselSend(host, msg); 
     }
  
     //move onto the next chunk of the message
   }
+
+  // restore message size before returning
+  tinsel_mboxSetLen(ctxt->currentSize);
 
   return; 
 }
@@ -502,7 +514,7 @@ extern "C" void softswitch_flush_perfmon() {
   tinselWaitUntil(TINSEL_CAN_SEND);
 
   //prepare the message 
-  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_TINSEL_SLOT);
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_MBOX_SLOT);
   msg->id = tinselId();  
   msg->size = 13;
 
@@ -524,6 +536,7 @@ extern "C" void softswitch_flush_perfmon() {
   msg->payload[12] = ((idle_cycles>>24)&0xFF);
 
   //send the message    
+  tinselWaitUntil(TINSEL_CAN_SEND);
   tinselSend(host, msg); 
   
   //wait until we can send
@@ -549,6 +562,7 @@ extern "C" void softswitch_flush_perfmon() {
   msg->payload[12] = ((recv_cycles>>0)&0xFF);
 
   //send the message    
+  tinselWaitUntil(TINSEL_CAN_SEND);
   tinselSend(host, msg); 
   
   //wait until we can send
@@ -566,6 +580,7 @@ extern "C" void softswitch_flush_perfmon() {
   msg->payload[6] = ((recv_handler_cycles>>24)&0xFF);
 
   //send the message    
+  tinselWaitUntil(TINSEL_CAN_SEND);
   tinselSend(host, msg); 
 
   //Reset the performance counters
@@ -578,14 +593,21 @@ extern "C" void softswitch_flush_perfmon() {
   ctxt->recv_cycles = 0;
   ctxt->recv_handler_cycles = 0;
 
+  // restor the message size
+  tinsel_mboxSetLen(ctxt->currentSize);
+
 }
 #endif
 
-
+// code the exit code for the application
 extern "C" void softswitch_handler_exit(int code)
 {
+  // get the context for the thread and device
+  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
+
   //Each message uses 1 flit
-  tinsel_mboxSetLen(HOSTMSG_FLIT_SIZE);
+  tinselSetLen(HOSTMSG_FLIT_SIZE);
 
   //get host id
   int host = tinselHostId();
@@ -594,7 +616,7 @@ extern "C" void softswitch_handler_exit(int code)
   tinselWaitUntil(TINSEL_CAN_SEND);
 
   //prepare the message 
-  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_TINSEL_SLOT);
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_MBOX_SLOT);
   msg->id = tinselId();  
 
   //Add the payload
@@ -610,15 +632,25 @@ extern "C" void softswitch_handler_exit(int code)
   msg->payload[7] = 0;
 
   //send the message    
+  tinselWaitUntil(TINSEL_CAN_SEND);
   tinselSend(host, msg); 
+
+  //Restore message size
+  tinsel_mboxSetLen(ctxt->currentSize);
   
   return;
 }
 
+// key the key to be exported
+// the associated value with the key
 extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value)
 {
+  // get the context for the thread and device
+  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
+ 
   //Each message uses 1 flit
-  tinsel_mboxSetLen(HOSTMSG_FLIT_SIZE);
+  tinselSetLen(HOSTMSG_FLIT_SIZE);
 
   //get host id
   int host = tinselHostId();
@@ -627,7 +659,7 @@ extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value
   tinselWaitUntil(TINSEL_CAN_SEND);
 
   //prepare the message 
-  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_TINSEL_SLOT);
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_MBOX_SLOT);
   msg->id = tinselId();  
 
   //Add the payload
@@ -646,13 +678,16 @@ extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value
   //send the message    
   //tinselSend(host, msg); 
   
+  //Restore message size
+  tinsel_mboxSetLen(ctxt->currentSize);
+  
   return;
 }
 
 extern "C" void __assert_func (const char *file, int line, const char *assertFunc,const char *cond)
 {
   //Each message uses 1 flit
-  tinsel_mboxSetLen(HOSTMSG_FLIT_SIZE);
+  tinselSetLen(HOSTMSG_FLIT_SIZE);
 
   //get host id
   int host = tinselHostId();
@@ -661,7 +696,7 @@ extern "C" void __assert_func (const char *file, int line, const char *assertFun
   tinselWaitUntil(TINSEL_CAN_SEND);
 
   //prepare the message 
-  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_TINSEL_SLOT);
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_MBOX_SLOT);
   msg->id = tinselId();  
   uint16_t msgsize = 1;
 
@@ -681,6 +716,7 @@ extern "C" void __assert_func (const char *file, int line, const char *assertFun
        msg->size = msgsize;
 
        // send the message
+       tinselWaitUntil(TINSEL_CAN_SEND);
        tinselSend(host, msg);
        
        //wait until we can send
@@ -691,6 +727,7 @@ extern "C" void __assert_func (const char *file, int line, const char *assertFun
   msg->size = msgsize;
   
   // send the message
+  tinselWaitUntil(TINSEL_CAN_SEND);
   tinselSend(host, msg);
 
   #else 
@@ -699,6 +736,7 @@ extern "C" void __assert_func (const char *file, int line, const char *assertFun
   msg->size = 1;
 
   // send the message
+  tinselWaitUntil(TINSEL_CAN_SEND);
   tinselSend(host, msg);
   #endif
 
