@@ -421,16 +421,52 @@ extern "C" void tinsel_puts(const char *txt){
 
   //prepare the message 
   volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_MBOX_SLOT);
-  tinselWaitUntil(TINSEL_CAN_SEND);
   msg->id = tinselId();  
+
+//  msg->payload[0] = 0x01; //magic number for stdout
+//  uint32_t c = 1;
+//  while(*txt) {
+//     // increment c, if we have filled the packet send it 
+//     if(c < HOST_MSG_PAYLOAD) {
+//         msg->payload[c] = uint8_t(*txt);
+//         txt++;
+//         c++;
+//     } else {
+//         msg->size = c;
+//         tinselSend(host,msg);
+//         tinselWaitUntil(TINSEL_CAN_SEND);
+//         c = 0;
+//     }
+//  }
+//  
+//  // reached the end of the txt stream, sending null terminator
+//  if(c < HOST_MSG_PAYLOAD) {
+//    //There is enough space in the current packet 
+//    msg->payload[c] = '\0';
+//    msg->size = c;
+//    tinselSend(host,msg);
+//  } else {
+//    //not enough space
+//    
+//    //send the remaining data
+//    tinselSend(host,msg);
+//    tinselWaitUntil(TINSEL_CAN_SEND);
+//
+//    //message containing just the null terminator
+//    msg->size = 1;
+//    msg->payload[0] = '\0';
+//
+//    //send the null terminator
+//    tinselSend(host,msg);
+//  }
+
 
   //keep track of if this is the first message sent (for magic number)
   uint8_t first = 1;
-
+   
   //keep adding txt to payload until its gone
   while(*txt) {
 
-    tinselWaitUntil(TINSEL_CAN_SEND);
     uint8_t size = 0;
     // prepare the payload
     for(uint8_t i=0; i<HOST_MSG_PAYLOAD; i++) {
@@ -447,7 +483,8 @@ extern "C" void tinsel_puts(const char *txt){
        size++;
     }    
     msg->size = size; 
-
+    //tinselSend(host,msg);
+    
     //send terminating null
     if(!*txt) {
       if(size < HOST_MSG_PAYLOAD) {
@@ -455,7 +492,6 @@ extern "C" void tinsel_puts(const char *txt){
         msg->payload[size+1] = '\0';
         msg->size = size + 1;
         //send the message    
-        tinselWaitUntil(TINSEL_CAN_SEND);
         tinselSend(host, msg); 
         return;
       } else {
@@ -463,19 +499,15 @@ extern "C" void tinsel_puts(const char *txt){
         //So send an additional message
 
         //send the current message    
-        tinselWaitUntil(TINSEL_CAN_SEND);
         tinselSend(host, msg); 
-        tinselWaitUntil(TINSEL_CAN_SEND);
         msg->size = 1;
         msg->payload[0] = '\0'; 
         //send the message containing only the terminator
-        tinselWaitUntil(TINSEL_CAN_SEND);
         tinselSend(host, msg); 
         return;
       }
     } else {
       //send the message    
-      tinselWaitUntil(TINSEL_CAN_SEND);
       tinselSend(host, msg); 
     }
  
@@ -510,9 +542,6 @@ extern "C" void softswitch_flush_perfmon() {
   //get host id
   int host = tinselHostId();
 
-  //wait until we can send
-  tinselWaitUntil(TINSEL_CAN_SEND);
-
   //prepare the message 
   volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_MBOX_SLOT);
   msg->id = tinselId();  
@@ -535,8 +564,7 @@ extern "C" void softswitch_flush_perfmon() {
   msg->payload[11] = ((idle_cycles>>16)&0xFF);
   msg->payload[12] = ((idle_cycles>>24)&0xFF);
 
-  //send the message    
-  tinselWaitUntil(TINSEL_CAN_SEND);
+  // send a message
   tinselSend(host, msg); 
   
   //wait until we can send

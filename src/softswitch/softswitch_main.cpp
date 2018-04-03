@@ -162,7 +162,7 @@ extern "C" void softswitch_main()
 
     // Assumption: all buffers are owned by software, so we have to give them to mailbox
     // We only keep hold of slot 0 and tinsel_mboxSlotCount() [for host communication]
-    softswitch_softswitch_log(2, "Giving %d-1 receive buffers to mailbox", tinsel_mboxSlotCount());
+    softswitch_softswitch_log(2, "Giving %d-2 receive buffers to mailbox", tinsel_mboxSlotCount());
     for(unsigned i=1; i<tinsel_mboxSlotCount()-1; i++){
         tinsel_mboxAlloc( tinsel_mboxSlot(i) );
     }
