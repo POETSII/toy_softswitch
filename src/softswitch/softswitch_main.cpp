@@ -1,4 +1,5 @@
 #include "tinsel_api.hpp"
+#include "hostMsg.hpp"
 
 #include "softswitch.hpp"
 //#include <cstdio>
@@ -88,42 +89,136 @@ extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
 
 extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
 {
-    PThreadContext *ctxt=softswitch_getContext();
-    assert(ctxt->currentHandlerType!=0); // can't call handler log when not in a handler
-    assert(ctxt->currentDevice < ctxt->numDevices); // Current device must be in range
+  //Building a temporary handler log for playing about with this
+  PThreadContext *ctxt=softswitch_getContext();
+  assert(ctxt->currentHandlerType!=0); // can't call handler log when not in a handler
+  assert(ctxt->currentDevice < ctxt->numDevices); // Current device must be in range
 
-    if(level > ctxt->applLogLevel)
-        return;
+  if(level > ctxt->applLogLevel)
+    return;
 
-    char buffer[256];
-    int left=sizeof(buffer)-3;
-    char *dst=buffer;
-    
-    for(int i=0; i<255; i++) { buffer[i] = 0; } //To-Do replace with something better
+  const DeviceContext *deviceContext = ctxt->devices+ctxt->currentDevice;
 
-    const DeviceContext *deviceContext = ctxt->devices+ctxt->currentDevice;
-    
-    append_printf(left, dst, "[%08x] APPL / device (%u)=%s", tinsel_myId(), ctxt->currentDevice, deviceContext->id); 
+  //wait until we can send
+  tinselWaitUntil(TINSEL_CAN_SEND);
 
-    if(ctxt->currentHandlerType==1){
-        auto pin=deviceContext->vtable->inputPins[ctxt->currentPin].name;
-        append_printf(left, dst, " / recv / %s : ", pin);
-    }else if(ctxt->currentHandlerType==2){
-        auto pin=deviceContext->vtable->outputPins[ctxt->currentPin].name;
-        append_printf(left, dst, " / send / %s : ", pin);
-    }else if(ctxt->currentHandlerType==3){
-        append_printf(left, dst, " / comp / compute : ");
+  //Set the message length
+  tinselSetLen(HOSTMSG_FLIT_SIZE);
+  
+  //get the host id
+  int host = tinselHostId();
+
+  //prepare the message
+  volatile hostMsg *hmsg = (volatile hostMsg*)tinselSlot(HOSTMSG_MBOX_SLOT);
+  hmsg->id = tinselId();
+  hmsg->strAddr = (unsigned)static_cast<const void*>(msg); 
+  for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {
+    hmsg->parameters[i] = 0;
+  }
+
+  // Need to determine how many parameters there are
+  unsigned param_cnt = 0;
+  const char *in = msg;
+  char param_type[HOST_MSG_PAYLOAD]; // we can't have more parameters than this anyhow
+  while(*in != '\0') {
+    if(*in=='%'){
+      param_type[param_cnt] = *(in + sizeof(char)); //grab the next char to get the type: (d, u, f, x)
+      param_cnt++; 
+    } 
+    in++;
+  }
+ 
+  // Temporary solution to check that we have enough space in the host message
+  // just drops messages if they exceed the amount.
+  // TODO:should be turned into an assertion once that support has been added.
+  if(param_cnt > HOST_MSG_PAYLOAD)
+    param_cnt = HOST_MSG_PAYLOAD; 
+ 
+  // unpack the varadic parameters and place them in the message payload
+  va_list args;
+  va_start(args, msg); //msg : the named parameter preceeding the variadic
+  for(unsigned i=0; i<param_cnt; ++i) {
+    switch(param_type[i]) {
+      case 'f':  // float type
+      {
+        float fp_tmp = va_arg(args, float);
+        hmsg->parameters[i] = *((uint32_t *)&fp_tmp); //type prune into bits for transfer
+        break;
+      }
+      case 'd': // int type
+      {
+        int int_tmp = va_arg(args, int);
+        hmsg->parameters[i] = *((uint32_t *)&int_tmp); //type prune into bits for transfer
+        break;
+      } 
+      case 'u': // unsigned type
+      {
+        unsigned unsigned_tmp = va_arg(args, unsigned);
+        hmsg->parameters[i] = *((uint32_t *)&unsigned_tmp); //type prune into bits for transfer
+        break;
+      }
+      case 'x': // hex type
+      {
+        unsigned hex_tmp = va_arg(args, unsigned);
+        hmsg->parameters[i] = *((uint32_t *)&hex_tmp); //type prune into bits for transfer
+        break;
+      }
+       
     }
+  }
+  va_end(args);
 
-    va_list v;
-    va_start(v,msg);
-    append_vprintf(left, dst, msg, v);
-    va_end(v);
-    
-    append_printf(left, dst, "\n");
+  //send the current message
+  tinselSend(host, hmsg);
+  
+  // restore message size before returning
+  tinsel_mboxSetLen(ctxt->currentSize);
 
-    tinsel_puts(buffer);
+  return;
 }
+
+//extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
+//{
+//    PThreadContext *ctxt=softswitch_getContext();
+//    assert(ctxt->currentHandlerType!=0); // can't call handler log when not in a handler
+//    assert(ctxt->currentDevice < ctxt->numDevices); // Current device must be in range
+//
+//    if(level > ctxt->applLogLevel)
+//        return;
+//
+//    char buffer[256];
+//    int left=sizeof(buffer)-3;
+//    char *dst=buffer;
+//    
+//    for(int i=0; i<255; i++) { buffer[i] = 0; } //To-Do replace with something better
+//
+//    const DeviceContext *deviceContext = ctxt->devices+ctxt->currentDevice;
+//    
+//    //append_printf(left, dst, "[%08x] APPL / device (%u)=%s", tinsel_myId(), ctxt->currentDevice, deviceContext->id); 
+//
+//    //find the message location
+//    
+//    append_printf(left, dst, "%x  : msg =", static_cast<const void *>(msg));
+//
+//    //if(ctxt->currentHandlerType==1){
+//    //    auto pin=deviceContext->vtable->inputPins[ctxt->currentPin].name;
+//    //    append_printf(left, dst, "[%08x] APPL / device (%u)=%s / recv / %s : sadr = %u ", tinsel_myId(), ctxt->currentDevice, deviceContext->id, pin, static_cast<const void *>(msg));
+//    //}else if(ctxt->currentHandlerType==2){
+//    //    auto pin=deviceContext->vtable->outputPins[ctxt->currentPin].name;
+//    //    append_printf(left, dst, "[%08x] APPL / device (%u)=%s  / send / %s : sadr = %u ", tinsel_myId(), ctxt->currentDevice, deviceContext->id, pin, static_cast<const void *>(msg));
+//    //}else if(ctxt->currentHandlerType==3){
+//    //    append_printf(left, dst, "[%08x] APPL / device (%u)=%s  / comp / compute : sadr = %u ", tinsel_myId(), ctxt->currentDevice, deviceContext->id, static_cast<const void *>(msg));
+//    //}
+//
+//    va_list v;
+//    va_start(v,msg);
+//    append_vprintf(left, dst, msg, v);
+//    va_end(v);
+//    
+//    append_printf(left, dst, "\n");
+//
+//    tinsel_puts(buffer);
+//}
 
 #endif
 
