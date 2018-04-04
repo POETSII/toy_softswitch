@@ -138,33 +138,9 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
   va_list args;
   va_start(args, msg); //msg : the named parameter preceeding the variadic
   for(unsigned i=0; i<param_cnt; ++i) {
-    switch(param_type[i]) {
-      case 'f':  // float type
-      {
-        float fp_tmp = va_arg(args, float);
-        hmsg->parameters[i] = *((uint32_t *)&fp_tmp); //type prune into bits for transfer
-        break;
-      }
-      case 'd': // int type
-      {
-        int int_tmp = va_arg(args, int);
-        hmsg->parameters[i] = *((uint32_t *)&int_tmp); //type prune into bits for transfer
-        break;
-      } 
-      case 'u': // unsigned type
-      {
-        unsigned unsigned_tmp = va_arg(args, unsigned);
-        hmsg->parameters[i] = *((uint32_t *)&unsigned_tmp); //type prune into bits for transfer
-        break;
-      }
-      case 'x': // hex type
-      {
-        unsigned hex_tmp = va_arg(args, unsigned);
-        hmsg->parameters[i] = *((uint32_t *)&hex_tmp); //type prune into bits for transfer
-        break;
-      }
-       
-    }
+    
+        void* tmpvar = va_arg(args, void*);
+        hmsg->parameters[i] = tmpvar; //type prune into bits for transfer
   }
   va_end(args);
 
