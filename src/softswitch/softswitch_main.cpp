@@ -111,6 +111,7 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
   //prepare the message
   volatile hostMsg *hmsg = (volatile hostMsg*)tinselSlot(HOSTMSG_MBOX_SLOT);
   hmsg->id = tinselId();
+  hmsg->type = 1; // magic number for STDOUT
   hmsg->strAddr = (unsigned)static_cast<const void*>(msg); 
   for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {
     hmsg->parameters[i] = 0;
@@ -119,10 +120,10 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
   // Need to determine how many parameters there are
   unsigned param_cnt = 0;
   const char *in = msg;
-  char param_type[HOST_MSG_PAYLOAD]; // we can't have more parameters than this anyhow
+  //char param_type[HOST_MSG_PAYLOAD]; // we can't have more parameters than this anyhow
   while(*in != '\0') {
     if(*in=='%'){
-      param_type[param_cnt] = *(in + sizeof(char)); //grab the next char to get the type: (d, u, f, x)
+      //param_type[param_cnt] = *(in + sizeof(char)); //grab the next char to get the type: (d, u, f, x)
       param_cnt++; 
     } 
     in++;

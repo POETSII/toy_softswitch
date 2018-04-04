@@ -630,6 +630,35 @@ extern "C" void softswitch_flush_perfmon() {
 // code the exit code for the application
 extern "C" void softswitch_handler_exit(int code)
 {
+  // get the context for the thread and device
+  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
+
+  //Each message uses 1 flit
+  tinselSetLen(HOSTMSG_FLIT_SIZE);
+
+  //get host id
+  int host = tinselHostId();
+
+  //wait until we can send
+  tinselWaitUntil(TINSEL_CAN_SEND);
+
+  //prepare the message 
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_MBOX_SLOT);
+  msg->id = tinselId();  
+
+  //Add the payload
+  msg->type = 0; //magic number for exit
+  msg->parameters[0] = (void *)code;
+
+  //send the message    
+  tinselWaitUntil(TINSEL_CAN_SEND);
+  tinselSend(host, msg); 
+
+  //Restore message size
+  tinsel_mboxSetLen(ctxt->currentSize);
+  
+  return;
 //  // get the context for the thread and device
 //  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
 //  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
