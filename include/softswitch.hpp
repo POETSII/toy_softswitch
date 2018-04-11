@@ -5,6 +5,8 @@
 #include <assert.h>
 #include <stdbool.h>
 
+#include "hostMsg.hpp"
+
 #ifdef __cplusplus
 extern "C"{
 #endif
@@ -168,6 +170,12 @@ typedef struct _PThreadContext
     int applLogLevel;        // Controls how much output is printed from the application
     int softLogLevel;        // Controls how much output is printed from the softswitch
     int hardLogLevel;        // Controls how much output is printed from hardware
+
+    // used to keep track of the current pending hostMessages
+    // Maximum host messages per handler is defined as HOSTBUFFER_MSG
+    volatile hostMsg *hostBuffer; // pointer to the hostMessage buffer 
+    uint8_t hbuf_head; // head of the hostMsg circular buffer
+    uint8_t hbuf_tail; // tail of the hostMsg circular buffer 
 
     // This is used by the softswitch to track which device (if any) is active, so that we know during things like handler_log
     uint32_t currentDevice; 

@@ -644,15 +644,14 @@ extern "C" void softswitch_handler_exit(int code)
   tinselWaitUntil(TINSEL_CAN_SEND);
 
   //prepare the message 
-  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(HOSTMSG_MBOX_SLOT);
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(0);
   msg->id = tinselId();  
 
   //Add the payload
-  msg->type = 0; //magic number for exit
+  msg->type = 0x0F; //magic number for exit
   msg->parameters[0] = (void *)code;
 
   //send the message    
-  tinselWaitUntil(TINSEL_CAN_SEND);
   tinselSend(host, msg); 
 
   //Restore message size
