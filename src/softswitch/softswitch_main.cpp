@@ -5,8 +5,8 @@
 //#include <cstdio>
 #include <cstdarg>
 
-#define HOSTBUFFER_SIZE 20 
-#define MAX_HOST_PER_HANDLER 4
+#define HOSTBUFFER_SIZE 128 
+#define MAX_HOST_PER_HANDLER 2 
 
 #ifdef SOFTSWITCH_ENABLE_PROFILE
 #include "softswitch_perfmon.hpp"
@@ -344,7 +344,7 @@ extern "C" void softswitch_main()
              doSend=tinsel_mboxCanSend() && wantToSend;
              if(!doSend){
                  assert(tinsel_mboxCanRecv());
-                 doRecv=true;
+                 doRecv=true && adequateHostBufferSpace;
              }
          }else{
              // Default. Drain before fill.
@@ -386,17 +386,11 @@ extern "C" void softswitch_main()
                  hostMessageBufferPopSend((void*)sendBuffer);                
                } else { // send a normal message
                    if(currSendTodo==0){
-                       if(softswitch_IsRTSReady(ctxt)) {
-                         softswitch_softswitch_log(3, "preparing new message");
+                       softswitch_softswitch_log(3, "preparing new message");
     
-                         // Prepare a new packet to send
-                         currSize=softswitch_onSend(ctxt, (void*)sendBuffer, currSendTodo, currSendAddressList);
-                         ctxt->currentSize = currSize; // update the current size in the thread context
-                       } else if(!hostBufferEmpty) {
-                         // sending a message to the host
-                         softswitch_softswitch_log(3, "sending message to host");
-                         hostMessageBufferPopSend((void*)sendBuffer);                
-                       }    
+                       // Prepare a new packet to send
+                       currSize=softswitch_onSend(ctxt, (void*)sendBuffer, currSendTodo, currSendAddressList);
+                       ctxt->currentSize = currSize; // update the current size in the thread context
                    }else{
                        // We still have more addresses to deliver the last message to
                        softswitch_softswitch_log(3, "forwarding current message");
@@ -428,7 +422,12 @@ extern "C" void softswitch_main()
                        // Move onto next address for next time
                        currSendTodo--; // If this reaches zero, we are done with the message
                        currSendAddressList++;
-                   }
+                    } else if(!hostBufferEmpty) {
+                      // lowest priority send while there is buffer space
+                      // sending a message to the host
+                      softswitch_softswitch_log(3, "sending message to host");
+                      hostMessageBufferPopSend((void*)sendBuffer);                
+                   }    
                }
             }
          
