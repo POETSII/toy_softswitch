@@ -149,7 +149,7 @@ void sendHostMsg() {
   tinselSetLen(HOSTMSG_FLIT_SIZE);
 
   // get the slot for sending host messages
-  volatile hostMsg* hmsg = (volatile hostMsg*)tinselSlot(0);
+  volatile hostMsg* hmsg = (volatile hostMsg*)tinselSlot(HOSTMSG_MBOX_SLOT);
   hmsg->type = 0x0C; //no-op message
   hmsg->id = tinselId();
   hmsg->strAddr = 0;
@@ -200,8 +200,9 @@ extern "C" void softswitch_main()
 
     // Assumption: all buffers are owned by software, so we have to give them to mailbox
     // We only keep hold of slot 0
+    // RESERVING TOP SLOT FOR HOSTMSGS
     softswitch_softswitch_log(2, "Giving %d-1 receive buffers to mailbox", tinsel_mboxSlotCount());
-    for(unsigned i=1; i<tinsel_mboxSlotCount(); i++){
+    for(unsigned i=1; i<(tinsel_mboxSlotCount() - 1); i++){
         tinsel_mboxAlloc( tinsel_mboxSlot(i) );
     }
 
@@ -314,11 +315,8 @@ extern "C" void softswitch_main()
 
             /* Either we have to finish sending a previous message to more
                addresses, or we get the chance to send a new message. */
-            if(hostCount <= 0) {
-               sendHostMsg(); // send a dummy message to the host
-               hostCount++;
-            } else {
-              hostCount = 0;
+            if(hostCount <= 10) {
+              hostCount++;
               if(currSendTodo==0){
                   softswitch_softswitch_log(3, "preparing new message");
 
@@ -357,6 +355,9 @@ extern "C" void softswitch_main()
                   currSendTodo--; // If this reaches zero, we are done with the message
                   currSendAddressList++;
               }
+            } else {
+               sendHostMsg(); // send a dummy message to the host
+               hostCount = 0;
             }
         }
        
