@@ -174,8 +174,8 @@ typedef struct _PThreadContext
     // used to keep track of the current pending hostMessages
     // Maximum host messages per handler is defined as HOSTBUFFER_MSG
     volatile hostMsg *hostBuffer; // pointer to the hostMessage buffer 
-    uint8_t hbuf_head; // head of the hostMsg circular buffer
-    uint8_t hbuf_tail; // tail of the hostMsg circular buffer 
+    uint32_t hbuf_head; // head of the hostMsg circular buffer
+    uint32_t hbuf_tail; // tail of the hostMsg circular buffer 
 
     // This is used by the softswitch to track which device (if any) is active, so that we know during things like handler_log
     uint32_t currentDevice; 

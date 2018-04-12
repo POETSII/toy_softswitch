@@ -5,8 +5,8 @@
 //#include <cstdio>
 #include <cstdarg>
 
-#define HOSTBUFFER_SIZE 128 
-#define MAX_HOST_PER_HANDLER 2 
+#define HOSTBUFFER_SIZE 990 
+#define MAX_HOST_PER_HANDLER 3 
 
 #ifdef SOFTSWITCH_ENABLE_PROFILE
 #include "softswitch_perfmon.hpp"
@@ -91,10 +91,10 @@ extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
 }
 
 //! returns the size of the circular buffer (i.e. number of pending host messages)
-uint8_t hostMsgBufferSize() {
+uint32_t hostMsgBufferSize() {
   PThreadContext *ctxt=softswitch_getContext();
-  uint8_t h = ctxt->hbuf_head;
-  uint8_t t = ctxt->hbuf_tail;
+  uint32_t h = ctxt->hbuf_head;
+  uint32_t t = ctxt->hbuf_tail;
   
   // need to deal with wraparound
   if(t < h) {
@@ -105,7 +105,7 @@ uint8_t hostMsgBufferSize() {
 }
 
 //! returns the space available in the circular buffer 
-uint8_t hostMsgBufferSpace() { 
+uint32_t hostMsgBufferSpace() { 
   return HOSTBUFFER_SIZE - hostMsgBufferSize();
 }
 
