@@ -644,7 +644,7 @@ extern "C" void softswitch_handler_exit(int code)
   tinselWaitUntil(TINSEL_CAN_SEND);
 
   //prepare the message 
-  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(0);
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(15);
   msg->id = tinselId();  
 
   //Add the payload
@@ -653,9 +653,6 @@ extern "C" void softswitch_handler_exit(int code)
 
   //send the message    
   tinselSend(host, msg); 
-
-  //Restore message size
-  tinsel_mboxSetLen(ctxt->currentSize);
   
   return;
 //  // get the context for the thread and device

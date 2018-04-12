@@ -5,7 +5,7 @@
 //#include <cstdio>
 #include <cstdarg>
 
-#define HOSTBUFFER_SIZE 990 
+#define HOSTBUFFER_SIZE 30 
 #define MAX_HOST_PER_HANDLER 3 
 
 #ifdef SOFTSWITCH_ENABLE_PROFILE
@@ -162,9 +162,6 @@ void hostMessageBufferPopSend(void *sendBuffer) {
   // Message prepped, sending
   tinsel_mboxSend(host, hmsg);
 
-  // restore message size before returning
-  tinsel_mboxSetLen(ctxt->currentSize);
-     
   return;
 }
 
@@ -289,6 +286,8 @@ extern "C" void softswitch_main()
         bool adequateHostBufferSpace = (hostMsgBufferSpace() >= MAX_HOST_PER_HANDLER);
         // true if there are NO items in the host buffer
         bool hostBufferEmpty = (hostMsgBufferSize() == 0);
+        // if true then attempt a best effort approach to hostMsg transfers (drops messages if the buffer fills)
+        bool bestEffortHost = false;
 
         // Only want to send if either:
         // - we are currently sending message,
@@ -339,16 +338,19 @@ extern "C" void softswitch_main()
          
          bool doRecv=false;
          bool doSend=false;
-  
+
+         // used to block receives if the host buffer is full and not attempting best effort-based logging
+         bool hostBlock = (bestEffortHost || adequateHostBufferSpace); 
+
          if(enableSendOverRecv){
              doSend=tinsel_mboxCanSend() && wantToSend;
              if(!doSend){
                  assert(tinsel_mboxCanRecv());
-                 doRecv=true && adequateHostBufferSpace;
+                 doRecv=true && hostBlock;
              }
          }else{
              // Default. Drain before fill.
-  	     doRecv=tinsel_mboxCanRecv() && adequateHostBufferSpace; 
+  	     doRecv=tinsel_mboxCanRecv() && hostBlock; 
   	     if(!doRecv){
   	       assert(tinsel_mboxCanSend() && wantToSend);
   	       doSend=true;
@@ -381,7 +383,7 @@ extern "C" void softswitch_main()
                 addresses, or we get the chance to send a new message. 
                 or we need to send a message to the host */
    
-               if(!adequateHostBufferSpace) { // there are host messages that we need to flush first
+               if(!adequateHostBufferSpace && !bestEffortHost) { // there are host messages that we need to flush first
                  softswitch_softswitch_log(3, "host buffer approaching full, prioritising hostbuff draining");
                  hostMessageBufferPopSend((void*)sendBuffer);                
                } else { // send a normal message
