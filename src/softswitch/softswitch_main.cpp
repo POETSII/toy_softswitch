@@ -116,7 +116,7 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
 
     const DeviceContext *deviceContext = ctxt->devices+ctxt->currentDevice;
     
-    append_printf(left, dst, "[%08x] APPL / device (%u)=%s", tinsel_myId(), ctxt->currentDevice, deviceContext->id); 
+    append_printf(left, dst, "[%08x] APPL / device (%x)=%s", tinsel_myId(), ctxt->currentDevice, deviceContext->id); 
 
     if(ctxt->currentHandlerType==1){
         auto pin=deviceContext->vtable->inputPins[ctxt->currentPin].name;
@@ -140,23 +140,24 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
 
 //! for debugging, just sends a message to the host
 void sendHostMsg() {
-  PThreadContext *ctxt=softswitch_getContext();
+  //PThreadContext *ctxt=softswitch_getContext();
 
   // get the address for the host
-  int host = tinselHostId();
+  uint32_t host = tinselHostId();
 
   // set the message length
-  tinselSetLen(HOSTMSG_FLIT_SIZE);
+  tinsel_mboxSetLen(sizeof(hostMsg));
 
   // get the slot for sending host messages
-  volatile hostMsg* hmsg = (volatile hostMsg*)tinselSlot(HOSTMSG_MBOX_SLOT);
+  volatile hostMsg* hmsg = (volatile hostMsg*)tinsel_mboxSlot(HOSTMSG_MBOX_SLOT);
   hmsg->type = 0x0C; //no-op message
-  hmsg->id = tinselId();
-  hmsg->strAddr = 0;
-  for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {
-    hmsg->parameters[i] = (void *)123456;
-  }
+  //hmsg->id = tinselId();
+  //hmsg->strAddr = 0;
+  //for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {
+  //  hmsg->parameters[i] = (void *)123456;
+  //}
 
+  assert(tinsel_mboxCanSend()); // Only way we could have gotten here
   // Message prepped, sending
   tinsel_mboxSend(host, hmsg);
 
@@ -201,7 +202,7 @@ extern "C" void softswitch_main()
     // Assumption: all buffers are owned by software, so we have to give them to mailbox
     // We only keep hold of slot 0
     // RESERVING TOP SLOT FOR HOSTMSGS
-    softswitch_softswitch_log(2, "Giving %d-1 receive buffers to mailbox", tinsel_mboxSlotCount());
+    softswitch_softswitch_log(2, "Giving %x-1 receive buffers to mailbox", tinsel_mboxSlotCount());
     for(unsigned i=1; i<(tinsel_mboxSlotCount() - 1); i++){
         tinsel_mboxAlloc( tinsel_mboxSlot(i) );
     }
@@ -226,7 +227,7 @@ extern "C" void softswitch_main()
         // - we are currently sending message,
         // - or at least one device wants to send one
         bool wantToSend = (currSendTodo>0) || softswitch_IsRTSReady(ctxt);
-        softswitch_softswitch_log(3, "wantToSend=%d", wantToSend?1:0);
+        softswitch_softswitch_log(3, "wantToSend=%x", wantToSend?1:0);
 
         // Run idle if:
         // - There is nothing to receive
@@ -261,7 +262,7 @@ extern "C" void softswitch_main()
 
 	//------------- Waiting to send ----------------------
         uint32_t wakeupFlags = wantToSend ? (tinsel_CAN_RECV|tinsel_CAN_SEND) : tinsel_CAN_RECV;
-        softswitch_softswitch_log(3, "waiting for send=%d, recv=%d", wakeupFlags&tinsel_CAN_SEND, (wakeupFlags&tinsel_CAN_RECV)?1:0);
+        softswitch_softswitch_log(3, "waiting for send=%x, recv=%x", wakeupFlags&tinsel_CAN_SEND, (wakeupFlags&tinsel_CAN_RECV)?1:0);
 
         #ifdef SOFTSWITCH_ENABLE_PROFILE
         uint32_t blocked_start = tinsel_CycleCount(); 
@@ -315,7 +316,7 @@ extern "C" void softswitch_main()
 
             /* Either we have to finish sending a previous message to more
                addresses, or we get the chance to send a new message. */
-            if(hostCount <= 10) {
+            if(hostCount <= 1) {
               hostCount++;
               if(currSendTodo==0){
                   softswitch_softswitch_log(3, "preparing new message");
@@ -331,7 +332,7 @@ extern "C" void softswitch_main()
               if(currSendTodo>0){
                   assert(currSendAddressList);
                   
-                  softswitch_softswitch_log(3, "sending to thread %08x, device %u, pin %u", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->pin);
+                  softswitch_softswitch_log(3, "sending to thread %08x, device %x, pin %x", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->pin);
                   
                   // Update the target address (including the device and pin)
 	          static_assert(sizeof(address_t)==8);
@@ -345,7 +346,7 @@ extern "C" void softswitch_main()
                       // Send to the relevant thread
                       // TODO: Shouldn't there be something like mboxForward as part of
                       // the API, which only takes the address?
-                      softswitch_softswitch_log(4, "setting length to %u", currSize);
+                      softswitch_softswitch_log(4, "setting length to %x", currSize);
                       tinsel_mboxSetLen(currSize);
                       softswitch_softswitch_log(4, "doing send");
                       tinsel_mboxSend(currSendAddressList->thread, sendBuffer);
@@ -356,8 +357,9 @@ extern "C" void softswitch_main()
                   currSendAddressList++;
               }
             } else {
+               softswitch_softswitch_log(3, "sending dummy host message");
                sendHostMsg(); // send a dummy message to the host
-               hostCount = 0;
+               hostCount=0;
             }
         }
        
