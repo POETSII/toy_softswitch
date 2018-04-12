@@ -314,7 +314,7 @@ extern "C" void softswitch_main()
 
             /* Either we have to finish sending a previous message to more
                addresses, or we get the chance to send a new message. */
-            if(hostCount <= 9) {
+            if(hostCount <= 0) {
                sendHostMsg(); // send a dummy message to the host
                hostCount++;
             } else {
