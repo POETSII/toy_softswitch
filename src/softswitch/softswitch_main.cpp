@@ -10,6 +10,19 @@
 typedef unsigned long size_t;
 #endif
 
+//#define HOST_MSG_PAYLOAD 13 
+#define HOSTMSG_FLIT_SIZE 3 //4 flits 
+#define HOST_MSG_PAYLOAD (TinselWordsPerFlit*(HOSTMSG_FLIT_SIZE+1)) - 2 
+#define HOSTMSG_MBOX_SLOT (tinsel_mboxSlotCount() - 1) // Reserve the maximum mailbox slot for host messages  
+
+//Format of messages recv to the host
+typedef struct {
+  uint16_t type;
+  uint16_t id;
+  uint32_t strAddr;
+  void* parameters[HOST_MSG_PAYLOAD];
+} hostMsg;
+
 //! Initialise data-structures (e.g. RTS)
 extern "C" void softswitch_init(PThreadContext *ctxt);
 
@@ -125,6 +138,31 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
     tinsel_puts(buffer);
 }
 
+//! for debugging, just sends a message to the host
+void sendHostMsg() {
+  PThreadContext *ctxt=softswitch_getContext();
+
+  // get the address for the host
+  int host = tinselHostId();
+
+  // set the message length
+  tinselSetLen(HOSTMSG_FLIT_SIZE);
+
+  // get the slot for sending host messages
+  volatile hostMsg* hmsg = (volatile hostMsg*)tinselSlot(0);
+  hmsg->type = 0x0C; //no-op message
+  hmsg->id = tinselId();
+  hmsg->strAddr = 0;
+  for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {
+    hmsg->parameters[i] = (void *)123456;
+  }
+
+  // Message prepped, sending
+  tinsel_mboxSend(host, hmsg);
+
+  return;
+}
+
 #endif
 
 #ifdef SOFTSWITCH_ENABLE_INTRA_THREAD_SEND
@@ -175,6 +213,9 @@ extern "C" void softswitch_main()
     unsigned perfmon_flush_rate_cnt = 1;
     const unsigned perfmon_flush_rate = SOFTSWITCH_ENABLE_PROFILE;
     #endif
+
+    // debug variable, controls how often messages are sent to the host
+    uint32_t hostCount = 0;
 
     while(1) {
     
@@ -273,44 +314,49 @@ extern "C" void softswitch_main()
 
             /* Either we have to finish sending a previous message to more
                addresses, or we get the chance to send a new message. */
+            if(hostCount <= 9) {
+               sendHostMsg(); // send a dummy message to the host
+               hostCount++;
+            } else {
+              hostCount = 0;
+              if(currSendTodo==0){
+                  softswitch_softswitch_log(3, "preparing new message");
 
-            if(currSendTodo==0){
-                softswitch_softswitch_log(3, "preparing new message");
+                  // Prepare a new packet to send
+                  currSize=softswitch_onSend(ctxt, (void*)sendBuffer, currSendTodo, currSendAddressList);
 
-                // Prepare a new packet to send
-                currSize=softswitch_onSend(ctxt, (void*)sendBuffer, currSendTodo, currSendAddressList);
+              }else{
+                  // We still have more addresses to deliver the last message to
+                  softswitch_softswitch_log(3, "forwarding current message");
+              }
+              
+              if(currSendTodo>0){
+                  assert(currSendAddressList);
+                  
+                  softswitch_softswitch_log(3, "sending to thread %08x, device %u, pin %u", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->pin);
+                  
+                  // Update the target address (including the device and pin)
+	          static_assert(sizeof(address_t)==8);
+	          // This wierdness is to avoid the compiler turning it into a call to memcpy
+                  *(uint64_t*)&((packet_t*)sendBuffer)->dest = *(uint64_t*)currSendAddressList;
 
-            }else{
-                // We still have more addresses to deliver the last message to
-                softswitch_softswitch_log(3, "forwarding current message");
-            }
-            
-            if(currSendTodo>0){
-                assert(currSendAddressList);
-                
-                softswitch_softswitch_log(3, "sending to thread %08x, device %u, pin %u", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->pin);
-                
-                // Update the target address (including the device and pin)
-		static_assert(sizeof(address_t)==8);
-		// This wierdness is to avoid the compiler turning it into a call to memcpy
-                *(uint64_t*)&((packet_t*)sendBuffer)->dest = *(uint64_t*)currSendAddressList;
+                  if(enableIntraThreadSend && currSendAddressList->thread==thisThreadId){
+                      // Deliver on this thread without waiting
+                      softswitch_onReceive(ctxt, (const void *)sendBuffer);  // Decode and dispatch
+                  }else{
+                      // Send to the relevant thread
+                      // TODO: Shouldn't there be something like mboxForward as part of
+                      // the API, which only takes the address?
+                      softswitch_softswitch_log(4, "setting length to %u", currSize);
+                      tinsel_mboxSetLen(currSize);
+                      softswitch_softswitch_log(4, "doing send");
+                      tinsel_mboxSend(currSendAddressList->thread, sendBuffer);
+                  }
 
-                if(enableIntraThreadSend && currSendAddressList->thread==thisThreadId){
-                    // Deliver on this thread without waiting
-                    softswitch_onReceive(ctxt, (const void *)sendBuffer);  // Decode and dispatch
-                }else{
-                    // Send to the relevant thread
-                    // TODO: Shouldn't there be something like mboxForward as part of
-                    // the API, which only takes the address?
-                    softswitch_softswitch_log(4, "setting length to %u", currSize);
-                    tinsel_mboxSetLen(currSize);
-                    softswitch_softswitch_log(4, "doing send");
-                    tinsel_mboxSend(currSendAddressList->thread, sendBuffer);
-                }
-
-                // Move onto next address for next time
-                currSendTodo--; // If this reaches zero, we are done with the message
-                currSendAddressList++;
+                  // Move onto next address for next time
+                  currSendTodo--; // If this reaches zero, we are done with the message
+                  currSendAddressList++;
+              }
             }
         }
        
