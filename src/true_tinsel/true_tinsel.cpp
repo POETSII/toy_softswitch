@@ -245,12 +245,12 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
       type=*format++;
       switch(type){
 	case 'u':
-        delta=vsnprintf_unsigned(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
-	//delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
+        //delta=vsnprintf_unsigned(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
+	delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
         break;
       case 'd':
-        delta=vsnprintf_signed(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,signed));
-	//delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,signed));
+        //delta=vsnprintf_signed(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,signed));
+	delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,signed));
         break;
       case 'x':
         delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
@@ -259,7 +259,8 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
         delta=vsnprintf_string(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,const char *));
         break;
       case 'f' : 
-        delta=vsnprintf_float(buffer, (bufferMax-buffer)+1, padChar, width, bin2fp(va_arg(vlist, uint32_t)));
+        //delta=vsnprintf_float(buffer, (bufferMax-buffer)+1, padChar, width, bin2fp(va_arg(vlist, uint32_t)));
+        delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
         break;
       case '%':
 	if(buffer<bufferMax){

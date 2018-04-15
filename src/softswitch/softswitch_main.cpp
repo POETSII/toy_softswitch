@@ -12,15 +12,15 @@ typedef unsigned long size_t;
 
 //#define HOST_MSG_PAYLOAD 13 
 #define HOSTMSG_FLIT_SIZE 3 //4 flits 
-#define HOST_MSG_PAYLOAD (TinselWordsPerFlit*(HOSTMSG_FLIT_SIZE+1)) - 2 
-#define HOSTMSG_MBOX_SLOT (tinsel_mboxSlotCount() - 1) // Reserve the maximum mailbox slot for host messages  
+#define HOST_MSG_PAYLOAD (TinselWordsPerFlit * (HOSTMSG_FLIT_SIZE+1)) - 2 
+#define HOSTMSG_MBOX_SLOT 1 // Reserve the maximum mailbox slot for host messages  
 
 //Format of messages recv to the host
 typedef struct {
   uint16_t type;
   uint16_t id;
   uint32_t strAddr;
-  void* parameters[HOST_MSG_PAYLOAD];
+  uint32_t parameters[HOST_MSG_PAYLOAD];
 } hostMsg;
 
 //! Initialise data-structures (e.g. RTS)
@@ -147,6 +147,7 @@ void sendHostMsg() {
 
   // set the message length
   tinsel_mboxSetLen(sizeof(hostMsg));
+  //tinselSetLen(3);
 
   // get the slot for sending host messages
   volatile hostMsg* hmsg = (volatile hostMsg*)tinsel_mboxSlot(HOSTMSG_MBOX_SLOT);
@@ -157,7 +158,6 @@ void sendHostMsg() {
   //  hmsg->parameters[i] = (void *)123456;
   //}
 
-  assert(tinsel_mboxCanSend()); // Only way we could have gotten here
   // Message prepped, sending
   tinsel_mboxSend(host, hmsg);
 
@@ -200,10 +200,9 @@ extern "C" void softswitch_main()
     uint32_t currSize=0;
 
     // Assumption: all buffers are owned by software, so we have to give them to mailbox
-    // We only keep hold of slot 0
-    // RESERVING TOP SLOT FOR HOSTMSGS
+    // RESERVING SLOT 1 FOR HOSTMSGS
     softswitch_softswitch_log(2, "Giving %x-1 receive buffers to mailbox", tinsel_mboxSlotCount());
-    for(unsigned i=1; i<(tinsel_mboxSlotCount() - 1); i++){
+    for(unsigned i=2; i<tinsel_mboxSlotCount(); i++){
         tinsel_mboxAlloc( tinsel_mboxSlot(i) );
     }
 
@@ -272,7 +271,6 @@ extern "C" void softswitch_main()
         ctxt->blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount()); 
         #endif
 	//---------------------------------------------------
-
 	
         bool doRecv=false;
         bool doSend=false;
@@ -316,13 +314,14 @@ extern "C" void softswitch_main()
 
             /* Either we have to finish sending a previous message to more
                addresses, or we get the chance to send a new message. */
-            if(hostCount <= 1) {
+            if(hostCount <= 0) {
               hostCount++;
               if(currSendTodo==0){
                   softswitch_softswitch_log(3, "preparing new message");
 
                   // Prepare a new packet to send
                   currSize=softswitch_onSend(ctxt, (void*)sendBuffer, currSendTodo, currSendAddressList);
+                  assert(currSize < 128);
 
               }else{
                   // We still have more addresses to deliver the last message to
