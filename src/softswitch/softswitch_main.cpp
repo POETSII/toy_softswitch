@@ -387,7 +387,7 @@ extern "C" void softswitch_main()
              }
          }else{
              // Default. Drain before fill.
-  	     doRecv=tinsel_mboxCanRecv();   
+  	     doRecv=tinsel_mboxCanRecv() && adequateHostBufferSpace;   
   	     if(!doRecv){
   	       assert(tinsel_mboxCanSend() && wantToSend);
   	       doSend=true;
@@ -446,7 +446,7 @@ extern "C" void softswitch_main()
     	               // This wierdness is to avoid the compiler turning it into a call to memcpy
                        *(uint64_t*)&((packet_t*)sendBuffer)->dest = *(uint64_t*)currSendAddressList;
     
-                       if(enableIntraThreadSend && currSendAddressList->thread==thisThreadId){
+                       if(enableIntraThreadSend && currSendAddressList->thread==thisThreadId && adequateHostBufferSpace){
                            // Deliver on this thread without waiting
                            softswitch_onReceive(ctxt, (const void *)sendBuffer);  // Decode and dispatch
                        }else{
