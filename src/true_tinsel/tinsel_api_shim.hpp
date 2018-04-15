@@ -52,8 +52,14 @@ POETS_ALWAYS_INLINE uint32_t tinsel_mboxCanSend()
 // Message length in bytes
 POETS_ALWAYS_INLINE void tinsel_mboxSetLen(uint32_t n)
 {
-  uint32_t flitCount=(n+TinselWordsPerFlit+1) & (TinselWordsPerFlit-1);
-  tinselSetLen(flitCount);
+
+  assert(n <= (TinselWordsPerFlit * 4 * 4)); // 4 flits per message max, 4 bytes per word
+  uint32_t flitCnt = (n-1) >> TinselLogBytesPerFlit;
+  if(flitCnt < 0) {
+    flitCnt = 0;
+  }
+  tinselSetLen(flitCnt);
+
 }
 
 // Send message at address to destination

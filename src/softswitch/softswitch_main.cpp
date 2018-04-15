@@ -5,8 +5,8 @@
 //#include <cstdio>
 #include <cstdarg>
 
-#define HOSTBUFFER_SIZE 30 
-#define MAX_HOST_PER_HANDLER 3 
+#define HOSTBUFFER_SIZE 40 
+#define MAX_HOST_PER_HANDLER 2 
 
 #ifdef SOFTSWITCH_ENABLE_PROFILE
 #include "softswitch_perfmon.hpp"
@@ -90,32 +90,33 @@ extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
     tinsel_puts(buffer);
 }
 
-//! returns the size of the circular buffer (i.e. number of pending host messages)
+//! returns the size of the buffer (i.e. number of pending host messages)
 uint32_t hostMsgBufferSize() {
   PThreadContext *ctxt=softswitch_getContext();
   uint32_t h = ctxt->hbuf_head;
   uint32_t t = ctxt->hbuf_tail;
-  
+
   // need to deal with wraparound
   if(t < h) {
-    return (t+HOSTBUFFER_SIZE) - h; 
+    return (t+HOSTBUFFER_SIZE) - h;
   } else {
     return t-h;
   }
 }
-
-//! returns the space available in the circular buffer 
-uint32_t hostMsgBufferSpace() { 
+ 
+//! returns the space available in the buffer 
+uint32_t hostMsgBufferSpace() {
   return HOSTBUFFER_SIZE - hostMsgBufferSize();
 }
 
-//! Pushes a host message onto the circular buffer
+
+//! Pushes a host message onto the buffer
 void hostMsgBufferPush(hostMsg *msg) {
   PThreadContext *ctxt=softswitch_getContext();
-  
+
   volatile hostMsg *buff = ctxt->hostBuffer;
   // stupidness to avoid memcpy TODO:fix
-  buff[ctxt->hbuf_tail].type = msg->type; 
+  buff[ctxt->hbuf_tail].type = msg->type;
   buff[ctxt->hbuf_tail].id = msg->id;
   buff[ctxt->hbuf_tail].strAddr = msg->strAddr;
   for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {
@@ -126,15 +127,27 @@ void hostMsgBufferPush(hostMsg *msg) {
   ctxt->hbuf_tail = ctxt->hbuf_tail + 1;
   if(ctxt->hbuf_tail == HOSTBUFFER_SIZE) {
     ctxt->hbuf_tail = 0; // wrap around
-  } 
-  
-  return; 
+  }
+
+  return;
 }
 
+//! slow hostlink - sends data up the hostlink instead of via PCIe messages
+// pops the data off the buffer and passes it up the UART, can be used in situations where the buffer is full
+// and we don't want to block
+void hostMessageSlowPopSend() {
+  // Protocol for sending host messages over this channel
+  // 16-bits of ID (hi) and 8-bits of payload (lo)
+  // 
+
+  // TODO: Implement this
+}
+
+
 //! pops and sends a message from the buffer
-void hostMessageBufferPopSend(void *sendBuffer) {
+void hostMessageBufferPopSend() {
   PThreadContext *ctxt=softswitch_getContext();
-  
+
   // get the pointer to the hostMsgBuffer
   volatile hostMsg *buff = ctxt->hostBuffer;
 
@@ -142,10 +155,11 @@ void hostMessageBufferPopSend(void *sendBuffer) {
   int host = tinselHostId();
 
   // set the message length
-  tinselSetLen(HOSTMSG_FLIT_SIZE);
+  tinsel_mboxSetLen(sizeof(hostMsg));
+  //tinselSetLen(HOSTMSG_FLIT_SIZE);
 
   // get the slot for sending host messages
-  volatile hostMsg* hmsg = (volatile hostMsg*)sendBuffer;
+  volatile hostMsg* hmsg = (volatile hostMsg*)tinsel_mboxSlot(1);
   hmsg->type = buff[ctxt->hbuf_head].type;
   hmsg->id = buff[ctxt->hbuf_head].id;
   hmsg->strAddr = buff[ctxt->hbuf_head].strAddr;
@@ -165,8 +179,11 @@ void hostMessageBufferPopSend(void *sendBuffer) {
   return;
 }
 
+
+//! The log message call
 extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
 {
+
   //Building a temporary handler log for playing about with this
   PThreadContext *ctxt=softswitch_getContext();
   assert(ctxt->currentHandlerType!=0); // can't call handler log when not in a handler
@@ -178,40 +195,59 @@ extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...)
   const DeviceContext *deviceContext = ctxt->devices+ctxt->currentDevice;
 
   // create a hostMsg 
-  hostMsg hmsg; 
+  hostMsg hmsg;
 
   //prepare the message
   hmsg.id = tinselId();
   hmsg.type = 1; // magic number for STDOUT
-  hmsg.strAddr = (unsigned)static_cast<const void*>(msg); 
+  hmsg.strAddr = (unsigned)static_cast<const void*>(msg);
 
   // Need to determine how many parameters there are
   unsigned param_cnt = 0;
   const char *in = msg;
   while(*in != '\0') {
     if(*in=='%'){
-      param_cnt++; 
-    } 
+      param_cnt++;
+    }
     in++;
   }
- 
+
   // Temporary solution to check that we have enough space in the host message
   // just drops messages if they exceed the amount.
   // TODO:should be turned into an assertion once that support has been added.
   if(param_cnt > HOST_MSG_PAYLOAD)
-    param_cnt = HOST_MSG_PAYLOAD; 
- 
+    param_cnt = HOST_MSG_PAYLOAD;
+
   // unpack the varadic parameters and place them in the message payload
   va_list args;
   va_start(args, msg); //msg : the named parameter preceeding the variadic
   for(unsigned i=0; i<param_cnt; ++i) {
-        void* tmpvar = va_arg(args, void*);
+        uint32_t tmpvar = va_arg(args, uint32_t);
         hmsg.parameters[i] = tmpvar; //type prune into bits for transfer
   }
   va_end(args);
 
   // push the message onto the hostMsgBuffer
   hostMsgBufferPush(&hmsg);
+
+  // DEBUGGING SEND MESSAGE RIGHT AWAY
+  // get the address for the host
+  //int host = tinselHostId();
+
+  //// set the message length
+  //tinsel_mboxSetLen(sizeof(hostMsg));
+  ////tinselSetLen(HOSTMSG_FLIT_SIZE);
+
+  //// get the slot for sending host messages
+  //volatile hostMsg* hsmsg = (volatile hostMsg*)tinsel_mboxSlot(1);
+  //hsmsg->type = hmsg.type;
+  //hsmsg->id = hmsg.id;
+  //hsmsg->strAddr = hmsg.strAddr;
+  //for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {
+  //  hsmsg->parameters[i] = hmsg.parameters[i];
+  //}
+  //// Message prepped, sending
+  //tinsel_mboxSend(host, hsmsg);
 
   return;
 }
@@ -253,6 +289,7 @@ extern "C" void softswitch_main()
 
     // We'll hold onto this one
     volatile void *sendBuffer=tinsel_mboxSlot(0);
+    // Slot 1 we will keep for host messages
 
 
     // If a send is in progress, this will be non-null
@@ -262,9 +299,8 @@ extern "C" void softswitch_main()
 
     // Assumption: all buffers are owned by software, so we have to give them to mailbox
     // We only keep hold of slot 0 and [ tinsel_mboxSlotCount() - HOSTBUFFER_CNT, tinsel_mboxSlotCount()](for host comms)
-    softswitch_softswitch_log(2, "Giving %d-%d receive buffers to mailbox", tinsel_mboxSlotCount(), HOSTBUFFER_SIZE);
-    uint32_t max_non_host_message_slot = (tinsel_mboxSlotCount()-1);
-    for(unsigned i=1; i<max_non_host_message_slot; i++){
+    softswitch_softswitch_log(2, "Giving %d receive buffers to mailbox", tinsel_mboxSlotCount()-2);
+    for(unsigned i=2; i<tinsel_mboxSlotCount(); i++){
         tinsel_mboxAlloc( tinsel_mboxSlot(i) );
     }
 
@@ -286,8 +322,8 @@ extern "C" void softswitch_main()
         bool adequateHostBufferSpace = (hostMsgBufferSpace() >= MAX_HOST_PER_HANDLER);
         // true if there are NO items in the host buffer
         bool hostBufferEmpty = (hostMsgBufferSize() == 0);
-        // if true then attempt a best effort approach to hostMsg transfers (drops messages if the buffer fills)
-        bool bestEffortHost = false;
+        // Disallow host message to be dropped: when true host messages will be dropped when the host buffer is full
+        bool canDropHostMessages = true; // true best effort where messages are dropped
 
         // Only want to send if either:
         // - we are currently sending message,
@@ -339,18 +375,19 @@ extern "C" void softswitch_main()
          bool doRecv=false;
          bool doSend=false;
 
-         // used to block receives if the host buffer is full and not attempting best effort-based logging
-         bool hostBlock = (bestEffortHost || adequateHostBufferSpace); 
+         // If true we cannot recevie messages as it might risk adding to the host buffer
+         // we are blocked from receiving messages until the buffer has been cleared of space
+         //bool hostBlock = (!canDropHostMessages && !adequateHostBufferSpace); 
 
          if(enableSendOverRecv){
              doSend=tinsel_mboxCanSend() && wantToSend;
              if(!doSend){
                  assert(tinsel_mboxCanRecv());
-                 doRecv=true && hostBlock;
+                 doRecv=true;
              }
          }else{
              // Default. Drain before fill.
-  	     doRecv=tinsel_mboxCanRecv() && hostBlock; 
+  	     doRecv=tinsel_mboxCanRecv();   
   	     if(!doRecv){
   	       assert(tinsel_mboxCanSend() && wantToSend);
   	       doSend=true;
@@ -378,15 +415,16 @@ extern "C" void softswitch_main()
   
              assert(wantToSend); // Only come here if we have something to do
              assert(tinsel_mboxCanSend()); // Only reason we could have got here
-             
+   
+             // first clear any host messages
+             if(!hostBufferEmpty) {           
+               hostMessageBufferPopSend(); 
+             } else {
+  
              /* Either we have to finish sending a previous message to more
                 addresses, or we get the chance to send a new message. 
                 or we need to send a message to the host */
    
-               if(!adequateHostBufferSpace && !bestEffortHost) { // there are host messages that we need to flush first
-                 softswitch_softswitch_log(3, "host buffer approaching full, prioritising hostbuff draining");
-                 hostMessageBufferPopSend((void*)sendBuffer);                
-               } else { // send a normal message
                    if(currSendTodo==0){
                        softswitch_softswitch_log(3, "preparing new message");
     
@@ -424,13 +462,8 @@ extern "C" void softswitch_main()
                        // Move onto next address for next time
                        currSendTodo--; // If this reaches zero, we are done with the message
                        currSendAddressList++;
-                    } else if(!hostBufferEmpty) {
-                      // lowest priority send while there is buffer space
-                      // sending a message to the host
-                      softswitch_softswitch_log(3, "sending message to host");
-                      hostMessageBufferPopSend((void*)sendBuffer);                
-                   }    
                }
+              }
             }
          
          

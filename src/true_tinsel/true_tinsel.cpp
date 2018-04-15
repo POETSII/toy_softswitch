@@ -246,10 +246,12 @@ extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list
       type=*format++;
       switch(type){
 	case 'u':
-        delta=vsnprintf_unsigned(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
+        //delta=vsnprintf_unsigned(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
+        delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
         break;
       case 'd':
-        delta=vsnprintf_signed(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,signed));
+        //delta=vsnprintf_signed(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,signed));
+        delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
         break;
       case 'x':
         delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
@@ -634,22 +636,21 @@ extern "C" void softswitch_handler_exit(int code)
   PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
   const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
 
-  //Each message uses 1 flit
-  tinselSetLen(HOSTMSG_FLIT_SIZE);
+  tinsel_mboxSetLen(sizeof(hostMsg));
 
   //get host id
   int host = tinselHostId();
 
   //wait until we can send
-  tinselWaitUntil(TINSEL_CAN_SEND);
+  // tinselWaitUntil(TINSEL_CAN_SEND);
 
   //prepare the message 
-  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(15);
+  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(1); // slot 1 is reserved for host messages
   msg->id = tinselId();  
 
   //Add the payload
   msg->type = 0x0F; //magic number for exit
-  msg->parameters[0] = (void *)code;
+  msg->parameters[0] = (uint32_t)code;
 
   //send the message    
   tinselSend(host, msg); 
