@@ -9,8 +9,6 @@
 #include <cstdarg>
 #include <math.h>
 
-inline float bin2fp(uint32_t f) { return *((float*) &f); }
-
 extern "C" void * memcpy ( void * destination, const void * source, size_t num )
 {
   // TODO: this is slow, but small
@@ -70,238 +68,238 @@ extern "C" int strcmp(const char *a, const char *b)
   }
 }
 
-#ifndef POETS_DISABLE_LOGGING
-
-extern "C" int vsnprintf_string( char * buffer, int bufsz, char pad, int width, const char *data)
-{
-  int done=0;
-
-  // Can write to [buffer,bufferMax)
-  char *bufferMax=buffer+bufsz-1;
-  
-  int len=strlen(data);
-
-  // TODO: padding and width
-  while(*data){
-    if(buffer<bufferMax){
-      *buffer++ = *data;
-    }
-    ++data;
-  }
-  
-  return len;
-}
-
-
-
-extern "C" int vsnprintf_hex( char * buffer, int bufsz, char pad, int width, unsigned val)
-{
-  
-  static_assert(sizeof(unsigned)==4,"Assuming we have 32-bit integers...");
-
-  static const char digits[16]={'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
-  
-  char tmp[16]={0};
-  int len=0;
-  
-  bool isZero=true;
-  for(int p=7;p>=0;p--){
-    int d=val>>28;
-    if(d>0 || !isZero){
-      tmp[len++]=digits[d];
-      isZero=false;
-    }
-    val=val<<4;
-  }
-  if(isZero){
-    tmp[0]='0';
-  }
-  
-  return vsnprintf_string(buffer, bufsz, pad, width, tmp);
-}
-
-uint32_t int2str(unsigned val, char *tmp)
-{
-  static_assert(sizeof(unsigned)==4,"Assuming we have 32-bit integers...");
-  
-  static const unsigned pow10[10]={
-           1,           10,         100,
-	   1000,        10000,      100000,
-	   1000000,     10000000,   100000000,
-	   1000000000ul
-  };
-  
-  uint32_t len=0;
-  
-  bool nonZero=false;
-  for(int p=sizeof(pow10)/sizeof(pow10[0])-1; p>=0; p--){
-    int d=0;
-    while( val > pow10[p] ){
-      val-=pow10[p];
-      d=d+1;
-    }
-    if(d>0 || nonZero){
-      tmp[len++]=d+'0';
-    }
-  }
-  if(!nonZero){
-    tmp[len++]='0';
-  }
-
-  return len;
-}
- 
-extern "C" int vsnprintf_float(char * buffer, int bufsz, char pad, int width, float fpnum)
-{
-   char fpnum_str[60];
-   char * fpnum_str_ptr = &fpnum_str[0];
-
-   // integer part
-   uint32_t ipart = (uint32_t)fpnum; // integer part
-   uint32_t l = int2str(ipart, fpnum_str);
-   *(fpnum_str_ptr + l) = '.';
-   l++;
-
-   // float part
-   float fpart = fpnum - (float)ipart; // float part
-   uint32_t fpart_int = (uint32_t)(100000000 * fpart); //9dp 
-   int2str(fpart_int, fpnum_str_ptr + l);
-   return vsnprintf_string(buffer, bufsz, pad, width, fpnum_str);
-}
-
-extern "C" int vsnprintf_unsigned( char * buffer, int bufsz, char pad, int width, unsigned val)
-{
-  // TODO: width
-  // TODO: zeroPad
-  
-  char tmp[16] = { 0 };
-  int2str(val, tmp);
-  return vsnprintf_string(buffer, bufsz, pad, width, tmp);
-}
-
-extern "C" int vsnprintf_signed( char * buffer, int bufsz, char pad, int width, int val)
-{
-  int done=0;
-  if(val<0){
-    if(bufsz>1){
-      *buffer++='-';
-      bufsz--;
-    }
-    done=1;
-  }
-  return done+vsnprintf_unsigned(buffer, bufsz, pad, width, (unsigned)-val);
-}
-
-extern "C" int isdigit(int ch)
-{
-  return '0'<=ch && ch <='9';
-}
-
-extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list vlist )
-{
-  /*
-  buffer[bufsz-1]=0;
-  strncpy(buffer, format, bufsz-1);
-  return strlen(format);
-  */
-  
-  memset(buffer, 0, bufsz);
-  
-  int done=0;
-
-  // We can write in [buffer,bufferMax)
-  char *bufferMax=buffer+bufsz-1;
-  
-  while(*format){
-    char ch=*format++;
-    int delta=0;
- 
-    if(ch=='%'){
-      int width=-1;
-      char padChar=' ';
-      char type=0;
-      
-      // flags
-      while(1){
-        if(*format=='0'){
-          padChar='0';
-          format++;
-        }else{
-          break;
-        }
-      }
-      
-      // Width
-      while(1){
-        if(isdigit(*format)){
-          if(width==-1)
-            width=0;
-          width=width*10+(*format-'0');
-          ++format;
-        }else{
-          break;
-        }
-      }
-      
-      type=*format++;
-      switch(type){
-	case 'u':
-        //delta=vsnprintf_unsigned(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
-        delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
-        break;
-      case 'd':
-        //delta=vsnprintf_signed(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,signed));
-        delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
-        break;
-      case 'x':
-        delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
-        break;
-      case 's':
-        delta=vsnprintf_string(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,const char *));
-        break;
-      case 'f' : 
-        delta=vsnprintf_float(buffer, (bufferMax-buffer)+1, padChar, width, bin2fp(va_arg(vlist, uint32_t)));
-        break;
-      case '%':
-	if(buffer<bufferMax){
-	  *buffer='%';
-	}
-	delta=1;
-	break;
-      default:
-	// Print back out minimal format string we didn't handle
-	if(buffer<bufferMax){
-	  *buffer='%';
-	}
-	if(buffer+1<bufferMax){
-	  buffer[1]=type;
-	}
-        delta=2;
-        break;
-      }
-    }else{
-      if(buffer<bufferMax){
-	*buffer=ch;
-      }
-      delta=1;
-    }
-    
-    done+=delta;
-    buffer=buffer+delta;
-    if(buffer>bufferMax){
-      buffer=bufferMax;
-    }
-  }
-
-  while(buffer <= bufferMax){
-    *buffer=0;
-    buffer++;
-  }
-  
-  return done;
-}
-
-#endif
+//#ifndef POETS_DISABLE_LOGGING
+//
+//extern "C" int vsnprintf_string( char * buffer, int bufsz, char pad, int width, const char *data)
+//{
+//  int done=0;
+//
+//  // Can write to [buffer,bufferMax)
+//  char *bufferMax=buffer+bufsz-1;
+//  
+//  int len=strlen(data);
+//
+//  // TODO: padding and width
+//  while(*data){
+//    if(buffer<bufferMax){
+//      *buffer++ = *data;
+//    }
+//    ++data;
+//  }
+//  
+//  return len;
+//}
+//
+//
+//
+//extern "C" int vsnprintf_hex( char * buffer, int bufsz, char pad, int width, unsigned val)
+//{
+//  
+//  static_assert(sizeof(unsigned)==4,"Assuming we have 32-bit integers...");
+//
+//  static const char digits[16]={'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
+//  
+//  char tmp[16]={0};
+//  int len=0;
+//  
+//  bool isZero=true;
+//  for(int p=7;p>=0;p--){
+//    int d=val>>28;
+//    if(d>0 || !isZero){
+//      tmp[len++]=digits[d];
+//      isZero=false;
+//    }
+//    val=val<<4;
+//  }
+//  if(isZero){
+//    tmp[0]='0';
+//  }
+//  
+//  return vsnprintf_string(buffer, bufsz, pad, width, tmp);
+//}
+//
+//uint32_t int2str(unsigned val, char *tmp)
+//{
+//  static_assert(sizeof(unsigned)==4,"Assuming we have 32-bit integers...");
+//  
+//  static const unsigned pow10[10]={
+//           1,           10,         100,
+//	   1000,        10000,      100000,
+//	   1000000,     10000000,   100000000,
+//	   1000000000ul
+//  };
+//  
+//  uint32_t len=0;
+//  
+//  bool nonZero=false;
+//  for(int p=sizeof(pow10)/sizeof(pow10[0])-1; p>=0; p--){
+//    int d=0;
+//    while( val > pow10[p] ){
+//      val-=pow10[p];
+//      d=d+1;
+//    }
+//    if(d>0 || nonZero){
+//      tmp[len++]=d+'0';
+//    }
+//  }
+//  if(!nonZero){
+//    tmp[len++]='0';
+//  }
+//
+//  return len;
+//}
+// 
+//extern "C" int vsnprintf_float(char * buffer, int bufsz, char pad, int width, float fpnum)
+//{
+//   char fpnum_str[60];
+//   char * fpnum_str_ptr = &fpnum_str[0];
+//
+//   // integer part
+//   uint32_t ipart = (uint32_t)fpnum; // integer part
+//   uint32_t l = int2str(ipart, fpnum_str);
+//   *(fpnum_str_ptr + l) = '.';
+//   l++;
+//
+//   // float part
+//   float fpart = fpnum - (float)ipart; // float part
+//   uint32_t fpart_int = (uint32_t)(100000000 * fpart); //9dp 
+//   int2str(fpart_int, fpnum_str_ptr + l);
+//   return vsnprintf_string(buffer, bufsz, pad, width, fpnum_str);
+//}
+//
+//extern "C" int vsnprintf_unsigned( char * buffer, int bufsz, char pad, int width, unsigned val)
+//{
+//  // TODO: width
+//  // TODO: zeroPad
+//  
+//  char tmp[16] = { 0 };
+//  int2str(val, tmp);
+//  return vsnprintf_string(buffer, bufsz, pad, width, tmp);
+//}
+//
+//extern "C" int vsnprintf_signed( char * buffer, int bufsz, char pad, int width, int val)
+//{
+//  int done=0;
+//  if(val<0){
+//    if(bufsz>1){
+//      *buffer++='-';
+//      bufsz--;
+//    }
+//    done=1;
+//  }
+//  return done+vsnprintf_unsigned(buffer, bufsz, pad, width, (unsigned)-val);
+//}
+//
+//extern "C" int isdigit(int ch)
+//{
+//  return '0'<=ch && ch <='9';
+//}
+//
+//extern "C" int vsnprintf( char * buffer, int bufsz, const char * format, va_list vlist )
+//{
+//  /*
+//  buffer[bufsz-1]=0;
+//  strncpy(buffer, format, bufsz-1);
+//  return strlen(format);
+//  */
+//  
+//  memset(buffer, 0, bufsz);
+//  
+//  int done=0;
+//
+//  // We can write in [buffer,bufferMax)
+//  char *bufferMax=buffer+bufsz-1;
+//  
+//  while(*format){
+//    char ch=*format++;
+//    int delta=0;
+// 
+//    if(ch=='%'){
+//      int width=-1;
+//      char padChar=' ';
+//      char type=0;
+//      
+//      // flags
+//      while(1){
+//        if(*format=='0'){
+//          padChar='0';
+//          format++;
+//        }else{
+//          break;
+//        }
+//      }
+//      
+//      // Width
+//      while(1){
+//        if(isdigit(*format)){
+//          if(width==-1)
+//            width=0;
+//          width=width*10+(*format-'0');
+//          ++format;
+//        }else{
+//          break;
+//        }
+//      }
+//      
+//      type=*format++;
+//      switch(type){
+//	case 'u':
+//        //delta=vsnprintf_unsigned(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
+//        delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
+//        break;
+//      case 'd':
+//        //delta=vsnprintf_signed(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,signed));
+//        delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
+//        break;
+//      case 'x':
+//        delta=vsnprintf_hex(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,unsigned));
+//        break;
+//      case 's':
+//        delta=vsnprintf_string(buffer, (bufferMax-buffer)+1, padChar, width, va_arg(vlist,const char *));
+//        break;
+//      case 'f' : 
+//        delta=vsnprintf_float(buffer, (bufferMax-buffer)+1, padChar, width, bin2fp(va_arg(vlist, uint32_t)));
+//        break;
+//      case '%':
+//	if(buffer<bufferMax){
+//	  *buffer='%';
+//	}
+//	delta=1;
+//	break;
+//      default:
+//	// Print back out minimal format string we didn't handle
+//	if(buffer<bufferMax){
+//	  *buffer='%';
+//	}
+//	if(buffer+1<bufferMax){
+//	  buffer[1]=type;
+//	}
+//        delta=2;
+//        break;
+//      }
+//    }else{
+//      if(buffer<bufferMax){
+//	*buffer=ch;
+//      }
+//      delta=1;
+//    }
+//    
+//    done+=delta;
+//    buffer=buffer+delta;
+//    if(buffer>bufferMax){
+//      buffer=bufferMax;
+//    }
+//  }
+//
+//  while(buffer <= bufferMax){
+//    *buffer=0;
+//    buffer++;
+//  }
+//  
+//  return done;
+//}
+//
+//#endif
 
 /* Wrapper around the tinselUartTryPut() function, keeps trying until successful. 
 */
@@ -735,7 +733,7 @@ extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value
 //  //Restore message size
 //  tinsel_mboxSetLen(ctxt->currentSize);
 //  
-//  return;
+  return;
 }
 
 extern "C" void __assert_func (const char *file, int line, const char *assertFunc,const char *cond)
@@ -795,7 +793,8 @@ extern "C" void __assert_func (const char *file, int line, const char *assertFun
 //  #endif
 //
 //  tinsel_mboxWaitUntil((tinsel_WakeupCond)0);
-//  while(1);
+    while(1);
+    return;
 }
 
 int main()

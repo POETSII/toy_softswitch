@@ -2,11 +2,9 @@
 #include "hostMsg.hpp"
 
 #include "softswitch.hpp"
+#include "softswitch_hostmessaging.hpp"
 //#include <cstdio>
 #include <cstdarg>
-
-#define HOSTBUFFER_SIZE 40 
-#define MAX_HOST_PER_HANDLER 2 
 
 #ifdef SOFTSWITCH_ENABLE_PROFILE
 #include "softswitch_perfmon.hpp"
@@ -30,9 +28,14 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message);
 */
 extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets);
 
-extern "C" int vsnprintf (char * s, size_t n, const char * format, va_list arg );
+//extern "C" int vsnprintf (char * s, size_t n, const char * format, va_list arg );
 
 extern "C" void *memset( void *dest, int ch, size_t count );
+
+//! functions used to manage the hostmessaging buffer
+extern "C" uint32_t hostMsgBufferSize();
+extern "C" uint32_t hostMsgBufferSpace();
+extern "C" void hostMsgBufferPush(hostMsg *msg);
 
 static PThreadContext *softswitch_getContext()
 {
@@ -45,60 +48,30 @@ static PThreadContext *softswitch_getContext()
 
 #ifndef POETS_DISABLE_LOGGING
 
-
-static void append_vprintf(int &left, char *&dst, const char *msg, va_list v)
-{
-    int done=vsnprintf(dst, left, msg, v);
-    if(done>=left){
-      done=left-1;
-    }
-    dst+=done;
-    left-=done;
-}
-
-static void append_printf(int &left, char *&dst, const char *msg, ...)
-{
-    va_list v;
-    va_start(v,msg);
-    append_vprintf(left, dst, msg, v);
-    va_end(v);
-}
-
-
 extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
 {
-    PThreadContext *ctxt=softswitch_getContext();
-    
-    if(level > ctxt->softLogLevel)
-        return;
-    
-    char buffer[256];
-    int left=sizeof(buffer)-3;
-    char *dst=buffer;
-
-    for(int i=0; i<255; i++) { buffer[i] = 0; } //To-Do replace with something better
-
-    append_printf(left, dst, "[%08x] SOFT : ", tinsel_myId());
-    
-    va_list v;
-    va_start(v,msg);
-    append_vprintf(left, dst, msg, v);
-    va_end(v);
-    
-    append_printf(left, dst, "\n");
-
-    tinsel_puts(buffer);
+//    PThreadContext *ctxt=softswitch_getContext();
+//    
+//    if(level > ctxt->softLogLevel)
+//        return;
+//    
+//    char buffer[256];
+//    int left=sizeof(buffer)-3;
+//    char *dst=buffer;
+//
+//    for(int i=0; i<255; i++) { buffer[i] = 0; } //To-Do replace with something better
+//
+//    append_printf(left, dst, "[%08x] SOFT : ", tinsel_myId());
+//    
+//    va_list v;
+//    va_start(v,msg);
+//    append_vprintf(left, dst, msg, v);
+//    va_end(v);
+//    
+//    append_printf(left, dst, "\n");
+//
+//    tinsel_puts(buffer);
 }
-
-// extern definitions for host message buffer managment
-// definitions are in softswitch_hostmessaging.cpp
-extern "C" uint32_t hostMsgBufferSize(); // returns how many messages are in the buffer
-extern "C" uint32_t hostMsgBufferSpace(); // returns remaining space is in the buffer (number of host messages)
-extern "C" void hostMessageSlowPopSend(); // pops from the head of the buffer sends via UART (slow) TODO implement
-extern "C" void hostMessageBufferPopSend(); // pops from the head of the buffer and sends via PCIe
-//extern "C" void softswitch_handler_log_impl(int level, const char *msg, ...); // Adds a log message to the buffer
-extern "C" template<typename ... Param> void softswitch_handler_log_impl(int level, const char *msg, const Param& ... param);
-
 
 #endif
 
