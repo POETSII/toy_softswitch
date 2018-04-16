@@ -794,7 +794,7 @@ extern "C" void __assert_func (const char *file, int line, const char *assertFun
 //
 //  tinsel_mboxWaitUntil((tinsel_WakeupCond)0);
     while(1);
-    return;
+//    return;
 }
 
 int main()

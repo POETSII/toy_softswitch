@@ -95,10 +95,6 @@ TRUE_TINSEL_SRCS = $(POETS_TOY_SOFTSWITCH_ROOT)/src/true_tinsel/true_tinsel.cpp
 #	$(RV_LD) $(LDFLAGS) -T link.ld -o ${DESIGN}.elf ${DESIGN}.riscv.o  $(SOFTSWITCH_OBJS) $(APPLICATION_OBJS)
 
 ${DESIGN_ELF}: ${TRUE_TINSEL_SRCS}  $(SOFTSWITCH_SRCS) $(APPLICATION_SRCS) $(BASE)/link.ld $(INC)/config.h $(INC)/tinsel.h
-	#if [[ ! -s $(BASE)/link.ld ]] ; then \
-	#	2>&1 echo "Error: linker script is entry (caused untold problems when that happened before!)"; \
-	#	exit 1; \
-	#fi
 	time $(RV_CXX) $(CFLAGS) -Wall ${BASE}/entry.S ${TRUE_TINSEL_SRCS}  $(SOFTSWITCH_SRCS) $(APPLICATION_SRCS)  $(LDFLAGS) -T $(BASE)/link.ld -o ${DESIGN_ELF} 
 
 $(BASE)/link.ld: $(BASE)/genld.sh
