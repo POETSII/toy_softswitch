@@ -44,6 +44,7 @@ void hostMsgBufferPush(hostMsg *msg) {
 extern "C" void softswitch_handler_exit(int code)
 {
   hostMsg msg;
+  msg.id = tinselId(); // Id of this thread 
   msg.type = 0x0F; // magic number for exit
   msg.payload[0] = (uint32_t) code;
   hostMsgBufferPush(&msg); // push the exit code to the back of the queue
