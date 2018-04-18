@@ -51,16 +51,6 @@ extern "C" void softswitch_handler_exit(int code)
   return;
 }
 
-//! slow hostlink - sends data up the hostlink instead of via PCIe messages
-// pops the data off the buffer and passes it up the UART, can be used in situations where the buffer is full
-// and we don't want to block
-void hostMessageSlowPopSend() {
-  // Protocol for sending host messages over this channel
-  // 16-bits of ID (hi) and 8-bits of payload (lo)
-  // TODO: Implement this
-}
-
-
 //! pops and sends a message from the buffer
 void hostMessageBufferPopSend() {
   PThreadContext *ctxt=softswitch_getCtxt();
@@ -93,5 +83,58 @@ void hostMessageBufferPopSend() {
   tinsel_mboxSend(host, hmsg);
 
   return;
+}
+
+/* Wrapper around the tinselUartTryPut() function, keeps trying until successful. 
+*/
+void tinsel_UARTPut(uint8_t x) {
+  while(!tinselUartTryPut(x)) { }
+  return;
+}
+
+//! slow hostlink - sends data up the hostlink instead of via PCIe messages
+// pops the data off the buffer and passes it up the UART, can be used in situations where the buffer is full
+// to avoid deadlocking the system
+// This should (hopefully) be rarely called, so I (sf306) believe that it is reasonable to assume that the
+// hostmessage is taking the maximum size of 4 flits.
+void hostMessageSlowPopSend() {
+  // Protocol for sending host messages over this channel
+  // 16-bits of ID (hi) and 8-bits of payload (lo)
+
+  // setup the context and prefix id for sending down UART
+  uint32_t prefix=tinselId()<<8; // TODO: is this still required?
+  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
+ 
+  // get the host buffer
+  volatile hostMsg *buff = ctxt->hostBuffer;
+  
+  // get the hostMsg at the head
+  volatile hostMsg *hmsg = &buff[ctxt->hbuf_head];
+  
+  // sending the message type 
+  tinsel_UARTPut(prefix | ((hmsg->type>>0)&0xFF) ); //LSBs
+  tinsel_UARTPut(prefix | ((hmsg->type>>8)&0xFF) ); //MSBs
+
+  // sending the ID (this is redundant [sf306])
+  tinsel_UARTPut(prefix | ((hmsg->id>>0)&0xFF) ); //LSBs
+  tinsel_UARTPut(prefix | ((hmsg->id>>8)&0xFF)); //MSBs
+
+  // sending each element of the hostMsg payload
+  for(uint32_t i=0; i<HOST_MSG_PAYLOAD; i++) {
+    tinsel_UARTPut(prefix | ((hmsg->payload[i]>>0)&0xFF)); //LSBs
+    tinsel_UARTPut(prefix | ((hmsg->payload[i]>>8)&0xFF)); 
+    tinsel_UARTPut(prefix | ((hmsg->payload[i]>>16)&0xFF)); 
+    tinsel_UARTPut(prefix | ((hmsg->payload[i]>>24)&0xFF)); //MSBs
+  }
+  
+  // increment the buffer head to pop the message
+  ctxt->hbuf_head = ctxt->hbuf_head + 1;
+  if(ctxt->hbuf_head == HOSTBUFFER_SIZE) {
+    ctxt->hbuf_head = 0; // wrap around
+  }
+
+  return;
+  
 }
 
