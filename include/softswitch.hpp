@@ -229,16 +229,6 @@ bool softswitch_IsRTSReady(PThreadContext *pCtxt);
 #define POETS_MAX_SOFTSWITCH_LOGGING_LEVEL 10
 #endif
 
-//! Allows logging from within the softswitch
-#ifndef POETS_DISABLE_LOGGING
-#define softswitch_softswitch_log(level, ...) \
-  if(level <= POETS_MAX_LOGGING_LEVEL && level <= POETS_MAX_SOFTSWITCH_LOGGING_LEVEL){ softswitch_softswitch_log_impl(level, __VA_ARGS__); }
-#else
-#define softswitch_softswitch_log(level, ...) \
-    ((void)0)
-#endif
-void softswitch_softswitch_log_impl(int level, const char *msg, ...);
-
 //! Used by a device to indicate everything is finished
 void softswitch_handler_exit(int code);
 

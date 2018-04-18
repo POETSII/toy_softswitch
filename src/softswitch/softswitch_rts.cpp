@@ -1,4 +1,5 @@
 #include "softswitch.hpp"
+#include "softswitch_hostmessaging.hpp"
 
 #include <cstdio>
 

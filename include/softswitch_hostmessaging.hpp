@@ -46,6 +46,11 @@ extern "C" void hostMessageSlowPopSend();
 //! pops and sends a message from the buffer
 extern "C" void hostMessageBufferPopSend(); 
 
+//! directHostMessageSlowSend
+// bypasses the buffer and the main softswitch event loop and sends the hostmessage directly
+// this is used to send asserts etc.. where the rest of the softswitch should stop executing.
+void directHostMessageSlowSend(hostMsg *msg);
+
 /*
    Handler messages (non-variadic)
 */
@@ -81,7 +86,6 @@ void log_peel_params(hostMsg *hmsg, uint32_t* cnt, const P1& p1, Param& ... para
 template<typename ... Param>
 void softswitch_handler_log(int level, const char *msg, const Param& ... param){
 
-  //Building a temporary handler log for playing about with this
   PThreadContext *ctxt=softswitch_getCtxt();
   assert(ctxt->currentHandlerType!=0); // can't call handler log when not in a handler
   assert(ctxt->currentDevice < ctxt->numDevices); // Current device must be in range
@@ -103,16 +107,49 @@ void softswitch_handler_log(int level, const char *msg, const Param& ... param){
   uint32_t param_cnt = 1;
   log_peel_params(&hmsg, &param_cnt, param...);
 
-  // Temporary solution to check that we have enough space in the host message
-  // currently just drops messages if they exceed the amount.
-  // TODO:should be turned into an assertion once that support has been added.
-  if(param_cnt > HOST_MSG_PAYLOAD)
-    param_cnt = HOST_MSG_PAYLOAD;
+  assert(param_cnt <= HOST_MSG_PAYLOAD);
 
   // push the message onto the hostMsgBuffer
   hostMsgBufferPush(&hmsg);
 
   return;
 }
+
+#ifndef POETS_DISABLE_LOGGING
+
+//! The softswith log messaging (this is for debugging, it uses the slower UART channel as otherwise a deadlock might occur)
+// extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
+template<typename ... Param>
+void softswitch_softswitch_log(int level, const char *msg, const Param& ... param){
+
+  PThreadContext *ctxt=softswitch_getCtxt();
+  assert(ctxt->currentHandlerType!=0); // can't call handler log when not in a handler
+  assert(ctxt->currentDevice < ctxt->numDevices); // Current device must be in range
+
+  if(level > ctxt->applLogLevel)
+    return;
+
+  const DeviceContext *deviceContext = ctxt->devices+ctxt->currentDevice;
+
+  // create a hostMsg 
+  hostMsg hmsg;
+
+  //prepare the message
+  hmsg.id = tinselId();
+  hmsg.type = 0x1; // magic number for STDOUT
+  hmsg.payload[0] = (unsigned)static_cast<const void*>(msg);
+
+  // peel off the parameters from the variadic
+  uint32_t param_cnt = 1;
+  log_peel_params(&hmsg, &param_cnt, param...);
+
+  assert(param_cnt <= HOST_MSG_PAYLOAD);
+
+  // This does not go through the buffer as it could cause deadlock
+  directHostMessageSlowSend(&hmsg);
+
+  return;
+}
+#endif /* POETS_DISABLE_LOGGING */
 
 #endif /* SOFTSWITCH_HOSTMESSAGING */

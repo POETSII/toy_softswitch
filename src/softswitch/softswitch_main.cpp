@@ -48,8 +48,8 @@ static PThreadContext *softswitch_getContext()
 
 #ifndef POETS_DISABLE_LOGGING
 
-extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
-{
+//extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
+//{
 //    PThreadContext *ctxt=softswitch_getContext();
 //    
 //    if(level > ctxt->softLogLevel)
@@ -71,7 +71,7 @@ extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
 //    append_printf(left, dst, "\n");
 //
 //    tinsel_puts(buffer);
-}
+//}
 
 #endif
 
