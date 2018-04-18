@@ -47,6 +47,13 @@ extern "C" void hostMessageSlowPopSend();
 extern "C" void hostMessageBufferPopSend(); 
 
 /*
+   Handler messages (non-variadic)
+*/
+
+//! handler exit call, terminates the executive with code as the return status
+extern "C" void softswitch_handler_exit(int code);
+
+/*
     Variadic host log message calls
 */
 

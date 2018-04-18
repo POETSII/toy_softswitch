@@ -628,32 +628,32 @@ extern "C" void softswitch_flush_perfmon() {
 #endif
 
 // code the exit code for the application
-extern "C" void softswitch_handler_exit(int code)
-{
-  // get the context for the thread and device
-  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
-  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
-
-  tinsel_mboxSetLen(sizeof(hostMsg));
-
-  //get host id
-  int host = tinselHostId();
-
-  //wait until we can send
-  // tinselWaitUntil(TINSEL_CAN_SEND);
-
-  //prepare the message 
-  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(1); // slot 1 is reserved for host messages
-  msg->id = tinselId();  
-
-  //Add the payload
-  msg->type = 0x0F; //magic number for exit
-  msg->parameters[0] = (uint32_t)code;
-
-  //send the message    
-  tinselSend(host, msg); 
-  
-  return;
+//extern "C" void softswitch_handler_exit(int code)
+//{
+//  // get the context for the thread and device
+//  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+//  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
+//
+//  tinsel_mboxSetLen(sizeof(hostMsg));
+//
+//  //get host id
+//  int host = tinselHostId();
+//
+//  //wait until we can send
+//  // tinselWaitUntil(TINSEL_CAN_SEND);
+//
+//  //prepare the message 
+//  volatile hostMsg *msg = (volatile hostMsg*)tinselSlot(1); // slot 1 is reserved for host messages
+//  msg->id = tinselId();  
+//
+//  //Add the payload
+//  msg->type = 0x0F; //magic number for exit
+//  msg->parameters[0] = (uint32_t)code;
+//
+//  //send the message    
+//  tinselSend(host, msg); 
+//  
+//  return;
 //  // get the context for the thread and device
 //  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
 //  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
@@ -691,7 +691,7 @@ extern "C" void softswitch_handler_exit(int code)
 //  tinsel_mboxSetLen(ctxt->currentSize);
 //  
 //  return;
-}
+//}
 
 // key the key to be exported
 // the associated value with the key

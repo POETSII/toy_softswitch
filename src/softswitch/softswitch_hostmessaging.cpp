@@ -41,6 +41,15 @@ void hostMsgBufferPush(hostMsg *msg) {
   return;
 }
 
+//! handler exit call, terminates the executive with code as the return status
+extern "C" void softswitch_handler_exit(int code)
+{
+  hostMsg msg;
+  msg.type = 0x0F; // magic number for exit
+  msg.parameters[0] = (uint32_t) code;
+  hostMsgBufferPush(&msg); // push the exit code to the back of the queue
+  return;
+}
 
 //! slow hostlink - sends data up the hostlink instead of via PCIe messages
 // pops the data off the buffer and passes it up the UART, can be used in situations where the buffer is full
