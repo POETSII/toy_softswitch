@@ -40,17 +40,6 @@ void hostMsgBufferPush(hostMsg *msg) {
   return;
 }
 
-//! handler exit call, terminates the executive with code as the return status
-extern "C" void softswitch_handler_exit(int code)
-{
-  hostMsg msg;
-  msg.id = tinselId(); // Id of this thread 
-  msg.type = 0x0F; // magic number for exit
-  msg.payload[0] = (uint32_t) code;
-  hostMsgBufferPush(&msg); // push the exit code to the back of the queue
-  return;
-}
-
 //! pops and sends a message from the buffer
 void hostMessageBufferPopSend() {
   PThreadContext *ctxt=softswitch_getCtxt();
@@ -102,7 +91,7 @@ void hostMessageSlowPopSend() {
   // 16-bits of ID (hi) and 8-bits of payload (lo)
 
   // setup the context and prefix id for sending down UART
-  uint32_t prefix=tinselId()<<8; // TODO: is this still required?
+  uint32_t prefix=tinselId()<<8; 
   PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
   const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
  
@@ -134,3 +123,54 @@ void hostMessageSlowPopSend() {
   
 }
 
+//! directHostMessageSlowSend
+// bypasses the buffer and the main softswitch event loop and sends the hostmessage directly
+// this is used to send asserts etc.. where the rest of the softswitch should stop executing.
+void directHostMessageSlowSend(hostMsg *msg) {
+
+  // setup the context and prefix id for sending down UART
+  uint32_t prefix=tinselId()<<8; 
+  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
+ 
+  // sending the message type 
+  tinsel_UARTPut(prefix | ((msg->type>>0)&0xFF) ); //LSBs
+  tinsel_UARTPut(prefix | ((msg->type>>8)&0xFF) ); //MSBs
+
+  // sending each element of the hostMsg payload
+  for(uint32_t i=0; i<HOST_MSG_PAYLOAD; i++) {
+    tinsel_UARTPut(prefix | ((msg->payload[i]>>0)&0xFF)); //LSBs
+    tinsel_UARTPut(prefix | ((msg->payload[i]>>8)&0xFF)); 
+    tinsel_UARTPut(prefix | ((msg->payload[i]>>16)&0xFF)); 
+    tinsel_UARTPut(prefix | ((msg->payload[i]>>24)&0xFF)); //MSBs
+  }
+  
+  return;
+}
+
+/* 
+   Handler calls
+*/
+
+//! handler exit call, terminates the executive with code as the return status
+extern "C" void softswitch_handler_exit(int code)
+{
+  hostMsg msg;
+  msg.id = tinselId(); // Id of this thread 
+  msg.type = 0x0F; // magic number for exit
+  msg.payload[0] = (uint32_t) code;
+  hostMsgBufferPush(&msg); // push the exit code to the back of the queue
+  return;
+}
+
+//! assertion function, terminates the current execution
+// assertions are different because they do not use the host message buffer but send the message directly and then block.
+// It should probably be sent up the UART (feels safer?)
+extern "C" void __assert_func (const char *file, int line, const char *assertFunc,const char *cond)
+{
+  hostMsg msg;
+  msg.id = tinselId(); // Id of this thread 
+  msg.type = 0xFE; // magic number for assert with no info
+  directHostMessageSlowSend(&msg); // send the assert via the UART bypassing the buffer
+  while(1);
+}

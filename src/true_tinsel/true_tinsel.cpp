@@ -736,8 +736,8 @@ extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value
   return;
 }
 
-extern "C" void __assert_func (const char *file, int line, const char *assertFunc,const char *cond)
-{
+//extern "C" void __assert_func (const char *file, int line, const char *assertFunc,const char *cond)
+//{
 //  //Each message uses 1 flit
 //  tinselSetLen(HOSTMSG_FLIT_SIZE);
 //
@@ -793,9 +793,9 @@ extern "C" void __assert_func (const char *file, int line, const char *assertFun
 //  #endif
 //
 //  tinsel_mboxWaitUntil((tinsel_WakeupCond)0);
-    while(1);
+//    while(1);
 //    return;
-}
+//}
 
 int main()
 {
