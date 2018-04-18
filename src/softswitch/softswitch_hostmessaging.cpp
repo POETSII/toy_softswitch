@@ -27,9 +27,8 @@ void hostMsgBufferPush(hostMsg *msg) {
   // stupidness to avoid memcpy TODO:fix
   buff[ctxt->hbuf_tail].type = msg->type;
   buff[ctxt->hbuf_tail].id = msg->id;
-  buff[ctxt->hbuf_tail].strAddr = msg->strAddr;
   for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {
-    buff[ctxt->hbuf_tail].parameters[i] = msg->parameters[i];
+    buff[ctxt->hbuf_tail].payload[i] = msg->payload[i];
   }
 
   // increment the tail
@@ -46,7 +45,7 @@ extern "C" void softswitch_handler_exit(int code)
 {
   hostMsg msg;
   msg.type = 0x0F; // magic number for exit
-  msg.parameters[0] = (uint32_t) code;
+  msg.payload[0] = (uint32_t) code;
   hostMsgBufferPush(&msg); // push the exit code to the back of the queue
   return;
 }
@@ -79,9 +78,8 @@ void hostMessageBufferPopSend() {
   volatile hostMsg* hmsg = (volatile hostMsg*)tinsel_mboxSlot(1);
   hmsg->type = buff[ctxt->hbuf_head].type;
   hmsg->id = buff[ctxt->hbuf_head].id;
-  hmsg->strAddr = buff[ctxt->hbuf_head].strAddr;
   for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {
-    hmsg->parameters[i] = buff[ctxt->hbuf_head].parameters[i];
+    hmsg->payload[i] = buff[ctxt->hbuf_head].payload[i];
   }
 
   // increment the head

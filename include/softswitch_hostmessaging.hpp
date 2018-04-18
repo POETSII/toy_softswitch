@@ -51,7 +51,7 @@ extern "C" void hostMessageBufferPopSend();
 */
 
 //! handler exit call, terminates the executive with code as the return status
-extern "C" void softswitch_handler_exit(int code);
+void softswitch_handler_exit(int code);
 
 /*
     Variadic host log message calls
@@ -71,7 +71,7 @@ void log_peel_params(hostMsg *hmsg, uint32_t* cnt) {
 // TODO: change this so that it uses initialisers to consume less code space
 template<typename P1, typename ... Param>
 void log_peel_params(hostMsg *hmsg, uint32_t* cnt, const P1& p1, Param& ... param){
-    hmsg->parameters[*cnt] = *((uint32_t*)&p1); //prune type and place it in hostMsg parameters
+    hmsg->payload[*cnt] = *((uint32_t*)&p1); //prune type and place it in hostMsg parameters
     *cnt = *cnt + 1;
     log_peel_params(hmsg, cnt, param ...); //keep peeling
     return;
@@ -97,10 +97,10 @@ void softswitch_handler_log(int level, const char *msg, const Param& ... param){
   //prepare the message
   hmsg.id = tinselId();
   hmsg.type = 0x1; // magic number for STDOUT
-  hmsg.strAddr = (unsigned)static_cast<const void*>(msg);
+  hmsg.payload[0] = (unsigned)static_cast<const void*>(msg);
 
   // peel off the parameters from the variadic
-  uint32_t param_cnt = 0;
+  uint32_t param_cnt = 1;
   log_peel_params(&hmsg, &param_cnt, param...);
 
   // Temporary solution to check that we have enough space in the host message
