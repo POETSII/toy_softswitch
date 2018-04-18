@@ -116,10 +116,6 @@ void hostMessageSlowPopSend() {
   tinsel_UARTPut(prefix | ((hmsg->type>>0)&0xFF) ); //LSBs
   tinsel_UARTPut(prefix | ((hmsg->type>>8)&0xFF) ); //MSBs
 
-  // sending the ID (this is redundant [sf306])
-  tinsel_UARTPut(prefix | ((hmsg->id>>0)&0xFF) ); //LSBs
-  tinsel_UARTPut(prefix | ((hmsg->id>>8)&0xFF)); //MSBs
-
   // sending each element of the hostMsg payload
   for(uint32_t i=0; i<HOST_MSG_PAYLOAD; i++) {
     tinsel_UARTPut(prefix | ((hmsg->payload[i]>>0)&0xFF)); //LSBs

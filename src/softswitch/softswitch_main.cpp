@@ -195,9 +195,10 @@ extern "C" void softswitch_main()
          bool doRecv=false;
          bool doSend=false;
 
-         // If true we cannot recevie messages as it might risk adding to the host buffer
-         // we are blocked from receiving messages until the buffer has been cleared of space
-         //bool hostBlock = (!canDropHostMessages && !adequateHostBufferSpace); 
+         // change to a while loop so it keeps going untill it has drained?
+         if(!adequateHostBufferSpace) { //Drain the host buffer over UART to prevent deadlock
+           hostMessageSlowPopSend(); 
+         }
 
          if(enableSendOverRecv){
              doSend=tinsel_mboxCanSend() && wantToSend;
@@ -285,8 +286,7 @@ extern "C" void softswitch_main()
                }
               }
             }
-         
-         
+
           softswitch_softswitch_log(3, "loop bottom");
       }
 }
