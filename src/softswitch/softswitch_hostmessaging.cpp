@@ -148,6 +148,52 @@ void directHostMessageSlowSend(hostMsg *msg) {
   return;
 }
 
+/*
+   Perfmon calls
+*/
+#ifdef SOFTSWITCH_ENABLE_PROFILE
+
+//! softswitch_flush_perfmon 
+// flushes the performance monitoring counters  
+extern "C" void softswitch_flush_perfmon() {
+
+  static_assert(HOST_MSG_PAYLOAD >= 8, "Not enough space in the host message struct to flush all perfmon counters");
+
+  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
+
+  hostMsg msg;
+  msg.id = tinselId(); // Id of this thread
+  msg.type = 0x20; // magic number for perfmon dump  
+
+  // load the performance counter values into the payload
+  msg.payload[0] = ctxt->thread_cycles;
+  msg.payload[1] = ctxt->blocked_cycles;
+  msg.payload[2] = ctxt->idle_cycles;
+  msg.payload[3] = ctxt->perfmon_cycles;
+  msg.payload[4] = ctxt->send_cycles;
+  msg.payload[5] = ctxt->send_handler_cycles;
+  msg.payload[6] = ctxt->recv_cycles;
+  msg.payload[7] = ctxt->recv_handler_cycles;
+
+  // push onto the back of the buffer
+  hostMsgBufferPush(&msg);
+
+  // reset all the performance counters
+  ctxt->thread_cycles = 0;
+  ctxt->blocked_cycles = 0;
+  ctxt->idle_cycles = 0;
+  ctxt->perfmon_cycles = 0;
+  ctxt->send_cycles = 0;
+  ctxt->send_handler_cycles = 0;
+  ctxt->recv_cycles = 0;
+  ctxt->recv_handler_cycles = 0;
+
+  return;
+}
+
+#endif /* SOFTSWITCH_ENABLE_PROFILE */
+
 /* 
    Handler calls
 */

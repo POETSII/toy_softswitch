@@ -521,8 +521,8 @@ extern "C" void tinsel_puts(const char *txt){
 }
 
 
-#ifdef SOFTSWITCH_ENABLE_PROFILE
-extern "C" void softswitch_flush_perfmon() {
+//#ifdef SOFTSWITCH_ENABLE_PROFILE
+//extern "C" void softswitch_flush_perfmon() {
 
 //  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
 //  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
@@ -624,8 +624,8 @@ extern "C" void softswitch_flush_perfmon() {
 //  // restor the message size
 //  tinsel_mboxSetLen(ctxt->currentSize);
 
-}
-#endif
+//}
+//#endif
 
 // code the exit code for the application
 //extern "C" void softswitch_handler_exit(int code)

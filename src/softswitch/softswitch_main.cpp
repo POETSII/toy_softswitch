@@ -28,8 +28,6 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message);
 */
 extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets);
 
-//extern "C" int vsnprintf (char * s, size_t n, const char * format, va_list arg );
-
 extern "C" void *memset( void *dest, int ch, size_t count );
 
 //! functions used to manage the hostmessaging buffer
@@ -45,35 +43,6 @@ static PThreadContext *softswitch_getContext()
     return 0;
   }
 }
-
-#ifndef POETS_DISABLE_LOGGING
-
-//extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
-//{
-//    PThreadContext *ctxt=softswitch_getContext();
-//    
-//    if(level > ctxt->softLogLevel)
-//        return;
-//    
-//    char buffer[256];
-//    int left=sizeof(buffer)-3;
-//    char *dst=buffer;
-//
-//    for(int i=0; i<255; i++) { buffer[i] = 0; } //To-Do replace with something better
-//
-//    append_printf(left, dst, "[%08x] SOFT : ", tinsel_myId());
-//    
-//    va_list v;
-//    va_start(v,msg);
-//    append_vprintf(left, dst, msg, v);
-//    va_end(v);
-//    
-//    append_printf(left, dst, "\n");
-//
-//    tinsel_puts(buffer);
-//}
-
-#endif
 
 #ifdef SOFTSWITCH_ENABLE_INTRA_THREAD_SEND
 const int enableIntraThreadSend=1;
@@ -92,7 +61,6 @@ extern "C" void softswitch_main()
 { 
     PThreadContext *ctxt=softswitch_getContext();
     if(ctxt==0){
-      //tinsel_puts("softswitch_main - no thread\n");
       while(1);
     }
 
@@ -169,7 +137,11 @@ extern "C" void softswitch_main()
                         ctxt->thread_cycles = deltaCycles(ctxt->thread_cycles_tstart, tinsel_CycleCount());
                         volatile uint32_t thread_start = tinsel_CycleCount();
                         ctxt->thread_cycles_tstart = thread_start;
-                        softswitch_flush_perfmon();
+                        // check if there is space in the host buffer
+                        if(!hostMsgBufferSpace()) { // if not flush an element of the buffer over UART
+                          hostMessageSlowPopSend(); // clear space
+                        }
+                        softswitch_flush_perfmon(); // add the perfmon data to host message buffer
                         ctxt->perfmon_cycles = deltaCycles(thread_start, tinsel_CycleCount());
                         perfmon_flush_rate_cnt = 1;
                     }
