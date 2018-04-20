@@ -70,6 +70,7 @@ typedef struct _InputPinVTable
     uint16_t propertiesSize;
     uint16_t stateSize;
     const char *name;
+    uint8_t isApp; // if it's an application pin or not
 }InputPinVTable;
 
 typedef struct _OutputPinVTable
@@ -77,6 +78,7 @@ typedef struct _OutputPinVTable
     send_handler_t sendHandler;
     unsigned messageSize;
     const char *name;
+    uint8_t isApp; // if it's an application pin or not
 }OutputPinVTable;
 
 // Gives access to the code associated with each device
