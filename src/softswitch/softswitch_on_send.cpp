@@ -26,9 +26,10 @@ static unsigned right_most_one(uint32_t x)
 //! Prepare a message on the given buffer
 /*! \param numTargets Receives the number o f addresses to send the packet to
     \param pTargets If numTargets>0, this will be pointed at an array with numTargets elements
+    \param isApp if it is an application pin this is set to 1 else 0
     \retval Size of message in bytes
 */
-extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets)
+extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets, uint8_t *isApp)
 { 
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
@@ -91,8 +92,14 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     uint32_t messageSize=vtable->outputPins[pinIndex].messageSize;
 
     if(doSend){
-        numTargets=dev->targets[pinIndex].numTargets;
-        pTargets=dev->targets[pinIndex].targets;
+        if(vtable->outputPins[pinIndex].isApp) { // it is an application pin we only have 1 target the host
+          numTargets=1;
+          *isApp = 1; // it is an application pin
+        } else { // Otherwise we need to lookup the targets in the DeviceContext
+          numTargets=dev->targets[pinIndex].numTargets;
+          pTargets=dev->targets[pinIndex].targets;
+          isApp=0; // it is not an application pin
+        }
         ((packet_t*)message)->source.thread=ctxt->threadId;
         ((packet_t*)message)->source.device=dev->index;
         ((packet_t*)message)->source.pin=pinIndex;

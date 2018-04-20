@@ -26,7 +26,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message);
     \param pTargets If numTargets>0, this will be pointed at an array with numTargets elements
     \retval Size of message in bytes
 */
-extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets);
+extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets, uint8_t *isApp);
 
 extern "C" void *memset( void *dest, int ch, size_t count );
 
@@ -84,6 +84,7 @@ extern "C" void softswitch_main()
     const address_t *currSendAddressList=0;
     uint32_t currSendTodo=0;
     uint32_t currSize=0;
+    uint8_t isApp=0; // is 1 if we are sending on an application pin
 
     // Assumption: all buffers are owned by software, so we have to give them to mailbox
     // We only keep hold of slot 0 and [ tinsel_mboxSlotCount() - HOSTBUFFER_CNT, tinsel_mboxSlotCount()](for host comms)
@@ -136,7 +137,6 @@ extern "C" void softswitch_main()
                     } else {
                         ctxt->thread_cycles = deltaCycles(ctxt->thread_cycles_tstart, tinsel_CycleCount());
                         volatile uint32_t thread_start = tinsel_CycleCount();
-                        ctxt->thread_cycles_tstart = thread_start;
                         // check if there is space in the host buffer
                         if(!hostMsgBufferSpace()) { // if not flush an element of the buffer over UART
                           hostMessageSlowPopSend(); // clear space
@@ -222,7 +222,7 @@ extern "C" void softswitch_main()
                        softswitch_softswitch_log(3, "preparing new message");
     
                        // Prepare a new packet to send
-                       currSize=softswitch_onSend(ctxt, (void*)sendBuffer, currSendTodo, currSendAddressList);
+                       currSize=softswitch_onSend(ctxt, (void*)sendBuffer, currSendTodo, currSendAddressList, &isApp);
                        ctxt->currentSize = currSize; // update the current size in the thread context
                    }else{
                        // We still have more addresses to deliver the last message to
@@ -236,8 +236,12 @@ extern "C" void softswitch_main()
                        
                        // Update the target address (including the device and pin)
     	               static_assert(sizeof(address_t)==8);
-    	               // This wierdness is to avoid the compiler turning it into a call to memcpy
-                       *(uint64_t*)&((packet_t*)sendBuffer)->dest = *(uint64_t*)currSendAddressList;
+                       if(isApp) { // we are sending an application message
+                          *(uint64_t*)&((packet_t*)sendBuffer)->dest = tinselHostId(); 
+                       } else { // we are sending a regular message
+    	                 // This wierdness is to avoid the compiler turning it into a call to memcpy
+                         *(uint64_t*)&((packet_t*)sendBuffer)->dest = *(uint64_t*)currSendAddressList;
+                       }
     
                        if(enableIntraThreadSend && currSendAddressList->thread==thisThreadId && adequateHostBufferSpace){
                            // Deliver on this thread without waiting
@@ -249,7 +253,11 @@ extern "C" void softswitch_main()
                            softswitch_softswitch_log(4, "setting length to %u", currSize);
                            tinsel_mboxSetLen(currSize);
                            softswitch_softswitch_log(4, "doing send");
-                           tinsel_mboxSend(currSendAddressList->thread, sendBuffer);
+                           if(isApp) { // an application message
+                             tinsel_mboxSend(tinselHostId(), sendBuffer);
+                           } else { // not an application message
+                             tinsel_mboxSend(currSendAddressList->thread, sendBuffer);
+                           }
                        }
     
                        // Move onto next address for next time
