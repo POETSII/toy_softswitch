@@ -12,15 +12,16 @@ extern "C"{
 #endif
 
 // Some kind of address. Just made this up.
-#pragma pack(push,1)
-typedef struct _address_t
-{
-    uint32_t thread;    // hardware
-    uint16_t device;    // softare
-    uint8_t pin;       // software
-    uint8_t flag; //=0; // software
-}address_t;
-#pragma pack(pop)
+// moved to hostMsg.hpp
+//#pragma pack(push,1)
+//typedef struct _address_t
+//{
+//    uint32_t thread;    // hardware
+//    uint16_t device;    // softare
+//    uint8_t pin;       // software
+//    uint8_t flag; //=0; // software
+//}address_t;
+//#pragma pack(pop)
 
 // A packet. This probably mixes hardware and
 // software routing.

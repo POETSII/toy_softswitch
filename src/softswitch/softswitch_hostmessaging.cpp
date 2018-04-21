@@ -26,7 +26,7 @@ void hostMsgBufferPush(hostMsg *msg) {
   volatile hostMsg *buff = ctxt->hostBuffer;
   // stupidness to avoid memcpy TODO:fix
   buff[ctxt->hbuf_tail].type = msg->type;
-  buff[ctxt->hbuf_tail].id = msg->id;
+  buff[ctxt->hbuf_tail].source.thread = msg->source.thread;
   for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {
     buff[ctxt->hbuf_tail].payload[i] = msg->payload[i];
   }
@@ -57,7 +57,7 @@ void hostMessageBufferPopSend() {
   // get the slot for sending host messages
   volatile hostMsg* hmsg = (volatile hostMsg*)tinsel_mboxSlot(1);
   hmsg->type = buff[ctxt->hbuf_head].type;
-  hmsg->id = buff[ctxt->hbuf_head].id;
+  hmsg->source.thread = buff[ctxt->hbuf_head].source.thread;
   for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {
     hmsg->payload[i] = buff[ctxt->hbuf_head].payload[i];
   }
@@ -163,7 +163,7 @@ extern "C" void softswitch_flush_perfmon() {
   const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
 
   hostMsg msg;
-  msg.id = tinselId(); // Id of this thread
+  msg.source.thread = tinselId(); // Id of this thread
   msg.type = 0x20; // magic number for perfmon dump  
 
   // load the performance counter values into the payload
@@ -202,7 +202,7 @@ extern "C" void softswitch_flush_perfmon() {
 extern "C" void softswitch_handler_exit(int code)
 {
   hostMsg msg;
-  msg.id = tinselId(); // Id of this thread 
+  msg.source.thread = tinselId(); // Id of this thread 
   msg.type = 0x0F; // magic number for exit
   msg.payload[0] = (uint32_t) code;
   hostMsgBufferPush(&msg); // push the exit code to the back of the queue
@@ -215,7 +215,7 @@ extern "C" void softswitch_handler_exit(int code)
 extern "C" void __assert_func (const char *file, int line, const char *assertFunc,const char *cond)
 {
   hostMsg msg;
-  msg.id = tinselId(); // Id of this thread 
+  msg.source.thread = tinselId(); // Id of this thread 
   msg.type = 0xFE; // magic number for assert with no info
   directHostMessageSlowSend(&msg); // send the assert via the UART bypassing the buffer
   while(1);
