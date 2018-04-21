@@ -113,7 +113,7 @@ void softswitch_handler_log_impl(int level, const char *msg, const Param& ... pa
 
   //prepare the message
   hmsg.source.thread = tinselId();
-  hmsg.source.device = 0; // TODO: make thi the actual device
+  hmsg.source.device = deviceContext->index; 
   hmsg.type = 0x1; // magic number for STDOUT
   hmsg.payload[0] = (unsigned)static_cast<const void*>(msg);
 
@@ -155,7 +155,7 @@ void softswitch_softswitch_log_impl(int level, const char *msg, const Param& ...
 
   //prepare the message
   hmsg.source.thread = tinselId();
-  hmsg.source.device = 0; //TODO: make this the actual device index
+  hmsg.source.device = deviceContext->index; 
   hmsg.type = 0x1; // magic number for STDOUT
   hmsg.payload[0] = (unsigned)static_cast<const void*>(msg);
 

@@ -67,7 +67,12 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     ctxt->currentHandlerType=2;
     ctxt->currentPin=pinIndex;
 
-    char *payload=(char*)((packet_t*)message+1);
+    char *payload;
+    if(vtable->outputPins[pinIndex].isApp) {
+      payload=(char*)(((hostMsg*)message)->payload);
+    }else{
+      payload=(char*)((packet_t*)message+1);
+    }
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
     uint32_t hstart = tinsel_CycleCount();
@@ -94,18 +99,22 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     if(doSend){
         if(vtable->outputPins[pinIndex].isApp) { // it is an application pin we only have 1 target the host
           softswitch_softswitch_log(3, "is an application pin");
-          numTargets=1;
           *isApp = 1; // it is an application pin
+          numTargets=1;
+          ((hostMsg*)message)->source.thread=ctxt->threadId;
+          ((hostMsg*)message)->source.device=dev->index;
+          ((hostMsg*)message)->source.pin=pinIndex;
+          ((hostMsg*)message)->type=0xBB; //temporary special message type for application pins
         } else { // Otherwise we need to lookup the targets in the DeviceContext
           softswitch_softswitch_log(3, "is not an application pin");
+          *isApp=0; // it is not an application pin
           numTargets=dev->targets[pinIndex].numTargets;
           pTargets=dev->targets[pinIndex].targets;
-          *isApp=0; // it is not an application pin
+          ((packet_t*)message)->source.thread=ctxt->threadId;
+          ((packet_t*)message)->source.device=dev->index;
+          ((packet_t*)message)->source.pin=pinIndex;
+          ((packet_t*)message)->size=messageSize;
         }
-        ((packet_t*)message)->source.thread=ctxt->threadId;
-        ((packet_t*)message)->source.device=dev->index;
-        ((packet_t*)message)->source.pin=pinIndex;
-        ((packet_t*)message)->size=messageSize;
 
         softswitch_softswitch_log(4, "softswitch_onSend : source = %x:%x:%x", ctxt->threadId, dev->index, pinIndex);    
     }
