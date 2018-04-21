@@ -111,8 +111,6 @@ extern "C" void softswitch_main()
         bool adequateHostBufferSpace = (hostMsgBufferSpace() >= MAX_HOST_PER_HANDLER);
         // true if there are NO items in the host buffer
         bool hostBufferEmpty = (hostMsgBufferSize() == 0);
-        // Disallow host message to be dropped: when true host messages will be dropped when the host buffer is full
-        bool canDropHostMessages = true; // true best effort where messages are dropped
 
         // Only want to send if either:
         // - we are currently sending message,
@@ -236,8 +234,8 @@ extern "C" void softswitch_main()
                        
                        // Update the target address (including the device and pin)
     	               static_assert(sizeof(address_t)==8);
-                       if(isApp) { // we are sending an application message
-                          *(uint64_t*)&((packet_t*)sendBuffer)->dest = tinselHostId(); 
+                       if(isApp) { // we are sending an application message there is no destination
+                          //*(uint64_t*)&((packet_t*)sendBuffer)->dest = tinselHostId(); 
                        } else { // we are sending a regular message
     	                 // This wierdness is to avoid the compiler turning it into a call to memcpy
                          *(uint64_t*)&((packet_t*)sendBuffer)->dest = *(uint64_t*)currSendAddressList;
