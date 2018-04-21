@@ -250,19 +250,24 @@ extern "C" void softswitch_main()
                            // Send to the relevant thread
                            // TODO: Shouldn't there be something like mboxForward as part of
                            // the API, which only takes the address?
-                           softswitch_softswitch_log(4, "setting length to %u", currSize);
+                           softswitch_softswitch_log(3, "setting length to %u", currSize);
                            tinsel_mboxSetLen(currSize);
-                           softswitch_softswitch_log(4, "doing send");
                            if(isApp) { // an application message
+                             softswitch_softswitch_log(3, "doing application send");
+                             tinsel_mboxSetLen(64);
                              tinsel_mboxSend(tinselHostId(), sendBuffer);
+                             currSendTodo = 0;
                            } else { // not an application message
+                             softswitch_softswitch_log(3, "doing send");
                              tinsel_mboxSend(currSendAddressList->thread, sendBuffer);
                            }
                        }
     
-                       // Move onto next address for next time
-                       currSendTodo--; // If this reaches zero, we are done with the message
-                       currSendAddressList++;
+                       if(!isApp) { // we are only sending to multiple addresses if it is not an application message
+                         // Move onto next address for next time
+                         currSendTodo--; // If this reaches zero, we are done with the message
+                         currSendAddressList++;
+                       }
                }
               }
             }
