@@ -80,6 +80,7 @@ typedef struct _OutputPinVTable
     unsigned messageSize;
     const char *name;
     uint8_t isApp; // if it's an application pin or not
+    uint16_t messageType_numid; // numerical ID used to identify the message type at the executive 
 }OutputPinVTable;
 
 // Gives access to the code associated with each device

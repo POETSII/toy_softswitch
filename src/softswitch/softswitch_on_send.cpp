@@ -104,7 +104,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
           ((hostMsg*)message)->source.thread=ctxt->threadId;
           ((hostMsg*)message)->source.device=dev->index;
           ((hostMsg*)message)->source.pin=pinIndex;
-          ((hostMsg*)message)->type=0xBB; //temporary special message type for application pins
+          ((hostMsg*)message)->type=vtable->outputPins[pinIndex].messageType_numid; // get the numerical id for messagetype 
         } else { // Otherwise we need to lookup the targets in the DeviceContext
           softswitch_softswitch_log(3, "is not an application pin");
           *isApp=0; // it is not an application pin

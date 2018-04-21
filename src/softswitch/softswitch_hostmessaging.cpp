@@ -164,7 +164,7 @@ extern "C" void softswitch_flush_perfmon() {
 
   hostMsg msg;
   msg.source.thread = tinselId(); // Id of this thread
-  msg.type = 0x20; // magic number for perfmon dump  
+  msg.type = 0xE0; // magic number for perfmon dump  
 
   // load the performance counter values into the payload
   msg.payload[0] = ctxt->thread_cycles;
@@ -203,7 +203,7 @@ extern "C" void softswitch_handler_exit(int code)
 {
   hostMsg msg;
   msg.source.thread = tinselId(); // Id of this thread 
-  msg.type = 0x0F; // magic number for exit
+  msg.type = 0xFF; // magic number for exit
   msg.payload[0] = (uint32_t) code;
   hostMsgBufferPush(&msg); // push the exit code to the back of the queue
   return;
