@@ -3,7 +3,7 @@ SHELL=/bin/bash
 # Tinsel root
 POETS_TINSEL_ROOT ?= $(abspath ../../../tinsel)
 POETS_TOY_SOFTSWITCH_ROOT ?= $(abspath ../..)
-HOSTMSG_INC = $(POETS_TINSEL_ROOT)/../../host/
+PTSSERVE_INC = $(POETS_TINSEL_ROOT)/../../pts-serve/
 
 BASE=$(abspath $(POETS_TOY_SOFTSWITCH_ROOT)/src/true_tinsel)
 
@@ -21,7 +21,7 @@ include $(TINSEL_ROOT)/globals.mk
 RV_CXX = riscv64-unknown-elf-g++
 
 # Local compiler flags
-CFLAGS = $(RV_CFLAGS) -I $(INC) -I $(HOSTMSG_INC) -Os -g -Wno-unused-variable -Wno-unused-local-typedefs
+CFLAGS = $(RV_CFLAGS) -I $(INC) -I $(PTSSERVE_INC) -Os -g -Wno-unused-variable -Wno-unused-local-typedefs
 CFLAGS += -fomit-frame-pointer
 CFLAGS += -fno-default-inline
 CFLAGS += -fno-zero-initialized-in-bss
