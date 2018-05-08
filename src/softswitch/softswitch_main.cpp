@@ -165,9 +165,9 @@ extern "C" void softswitch_main()
          bool doRecv=false;
          bool doSend=false;
 
-         // change to a while loop so it keeps going untill it has drained?
-         if(!adequateHostBufferSpace) { //Drain the host buffer over UART to prevent deadlock
+         while(!adequateHostBufferSpace) { //Drain the host buffer over UART to prevent deadlock
            hostMessageSlowPopSend(); 
+           adequateHostBufferSpace = (hostMsgBufferSpace() >= MAX_HOST_PER_HANDLER);
          }
 
          if(enableSendOverRecv){

@@ -92,7 +92,7 @@ void hostMessageSlowPopSend() {
 
   // setup the context and prefix id for sending down UART
   uint32_t prefix=tinselId()<<8; 
-  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+  PThreadContext *ctxt=softswitch_getCtxt();
   const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
  
   // get the host buffer
@@ -130,7 +130,7 @@ void directHostMessageSlowSend(hostMsg *msg) {
 
   // setup the context and prefix id for sending down UART
   uint32_t prefix=tinselId()<<8; 
-  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+  PThreadContext *ctxt=softswitch_getCtxt();
   const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
  
   // sending the message type 
@@ -159,7 +159,7 @@ extern "C" void softswitch_flush_perfmon() {
 
   static_assert(HOST_MSG_PAYLOAD >= 8, "Not enough space in the host message struct to flush all perfmon counters");
 
-  PThreadContext *ctxt=softswitch_pthread_contexts + tinsel_myId();
+  PThreadContext *ctxt=softswitch_getCtxt();
   const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
 
   hostMsg msg;
