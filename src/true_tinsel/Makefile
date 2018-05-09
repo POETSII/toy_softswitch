@@ -21,11 +21,11 @@ include $(TINSEL_ROOT)/globals.mk
 RV_CXX = riscv64-unknown-elf-g++
 
 # Local compiler flags
-CFLAGS = $(RV_CFLAGS) -I $(INC) -I $(PTSSERVE_INC) -Os -g -Wno-unused-variable -Wno-unused-local-typedefs
+CFLAGS = $(RV_CFLAGS) -O2 -I $(INC) -I $(PTSSERVE_INC) -Os -g -Wno-unused-variable -Wno-unused-local-typedefs
 CFLAGS += -fomit-frame-pointer
 CFLAGS += -fno-default-inline
 CFLAGS += -fno-zero-initialized-in-bss
-CFLAGS +=  -flto
+CFLAGS += -flto
 CFLAGS += -fno-builtin-memcmp -fno-builtin-memcpy -fno-builtin-memset
 
 ifeq ($(HARDWARE_ASSERT_ENABLE),0)

@@ -162,7 +162,7 @@ void softswitch_softswitch_log_impl(int level, const char *msg, const Param& ...
   // peel off the parameters from the variadic
   uint32_t param_cnt = 1;
   log_peel_params(&hmsg, &param_cnt, param...);
-  assert(params_cnt <= HOST_MSG_PAYLOAD);
+  assert(param_cnt <= HOST_MSG_PAYLOAD);
 
   //std::vector<uint32_t> params = unpeel_all_params(param...);
   //assert(params.size() <= HOST_MSG_PAYLOAD);
