@@ -79,7 +79,7 @@ typedef struct _OutputPinVTable
     send_handler_t sendHandler;
     unsigned messageSize;
     const char *name;
-    uint8_t isApp; // if it's an application pin or not
+    uint16_t isApp; // if it's an application pin or not
     uint16_t messageType_numid; // numerical ID used to identify the message type at the executive 
 }OutputPinVTable;
 
@@ -139,6 +139,8 @@ typedef struct _DeviceContext
 
     struct _DeviceContext *prev;
     struct _DeviceContext *next;
+
+    uint32_t pad[5]; // padding to ensure cache line is not shared
 }DeviceContext;
 
 /*! Contains information about what this thread is managing.
@@ -148,8 +150,8 @@ typedef struct _DeviceContext
 */
 typedef struct _PThreadContext
 {
+    
     // Read-only parts
-
     unsigned threadId;
 
     const void *graphProps; // Application-specific graph properties (read-only)
@@ -175,12 +177,6 @@ typedef struct _PThreadContext
     int softLogLevel;        // Controls how much output is printed from the softswitch
     int hardLogLevel;        // Controls how much output is printed from hardware
 
-    // used to keep track of the current pending hostMessages
-    // Maximum host messages per handler is defined as HOSTBUFFER_MSG
-    volatile hostMsg *hostBuffer; // pointer to the hostMessage buffer 
-    uint32_t hbuf_head; // head of the hostMsg circular buffer
-    uint32_t hbuf_tail; // tail of the hostMsg circular buffer 
-
     // This is used by the softswitch to track which device (if any) is active, so that we know during things like handler_log
     uint32_t currentDevice; 
     int currentHandlerType;   // 0 = None, 1 = Recv, 2 = Send
@@ -197,6 +193,14 @@ typedef struct _PThreadContext
     // - edgeState -> softswitch_pthread_global_state+(uintptr_t)edgeState
     int pointersAreRelative;
 
+    // used to keep track of the current pending hostMessages
+    // Maximum host messages per handler is defined as HOSTBUFFER_MSG
+    volatile hostMsg *hostBuffer; // pointer to the hostMessage buffer 
+    uint32_t hbuf_head; // head of the hostMsg circular buffer
+    uint32_t hbuf_tail; // tail of the hostMsg circular buffer 
+
+    uint32_t pad[15]; // padding to ensure cache lines are not shared 
+
     //---------- hierarchical performance counters -----------
     #ifdef SOFTSWITCH_ENABLE_PROFILE
     uint32_t thread_cycles_tstart; // value of the cycle count before the last flush. 
@@ -210,7 +214,6 @@ typedef struct _PThreadContext
             uint32_t recv_handler_cycles; //the number of cycles used in the send_handler 
     #endif
     //-------------------------------------------
-
 }PThreadContext;
 
 

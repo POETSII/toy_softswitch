@@ -105,7 +105,7 @@ extern "C" void softswitch_main()
     while(1) {
     
         softswitch_softswitch_log(2, "Loop top");
-        
+    
         // true if there is enough space in the host buffer to store the handlers
         // if this is false then draining the hostbuffer is a priority
         bool adequateHostBufferSpace = (hostMsgBufferSpace() >= MAX_HOST_PER_HANDLER);
