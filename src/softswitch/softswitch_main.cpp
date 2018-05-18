@@ -6,7 +6,7 @@
 //#include <cstdio>
 #include <cstdarg>
 
-#define SINGLESTEPPING
+//#define SINGLESTEPPING
 
 #ifdef SOFTSWITCH_ENABLE_PROFILE
 #include "softswitch_perfmon.hpp"

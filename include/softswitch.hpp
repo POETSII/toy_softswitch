@@ -140,7 +140,7 @@ typedef struct _DeviceContext
     struct _DeviceContext *prev;
     struct _DeviceContext *next;
 
-    uint32_t pad[5]; // padding to ensure cache line is not shared
+    //uint32_t pad[5]; // padding to ensure cache line is not shared
 }DeviceContext;
 
 /*! Contains information about what this thread is managing.
@@ -199,7 +199,7 @@ typedef struct _PThreadContext
     uint32_t hbuf_head; // head of the hostMsg circular buffer
     uint32_t hbuf_tail; // tail of the hostMsg circular buffer 
 
-    uint32_t pad[10]; // padding to ensure cache lines are not shared 
+    //uint32_t pad[10]; // padding to ensure cache lines are not shared 
 
     //---------- hierarchical performance counters -----------
     #ifdef SOFTSWITCH_ENABLE_PROFILE
