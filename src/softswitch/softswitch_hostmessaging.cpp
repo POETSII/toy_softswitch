@@ -217,6 +217,10 @@ extern "C" void __assert_func (const char *file, int line, const char *assertFun
   hostMsg msg;
   msg.source.thread = tinselId(); // Id of this thread 
   msg.type = 0xFE; // magic number for assert with no info
+  msg.payload[0] = (unsigned)static_cast<const void*>(file); //address of the file where the assert occurred
+  msg.payload[1] = line; // line number for where the assert occurred 
+  msg.payload[2] = (unsigned)static_cast<const void*>(assertFunc); //string address for function where assert asserted 
+  msg.payload[3] = (unsigned)static_cast<const void*>(cond); // string address of cond
   directHostMessageSlowSend(&msg); // send the assert via the UART bypassing the buffer
   while(1);
 }
