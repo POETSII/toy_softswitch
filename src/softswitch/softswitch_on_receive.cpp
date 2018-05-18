@@ -25,6 +25,8 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
     
     assert(packet); // Anything arriving via this route must have been a real packet (no init message via this route)
 
+    softswitch_softswitch_log(3, "softswitch_onReceive: pin=%x\n", packet->dest.pin);
+    
     softswitch_softswitch_log(4, "softswitch_onReceive /  dst=%08x:%04x:%02x, src=%08x:%04x:%02x, size=%x", packet->dest.thread, packet->dest.device, packet->dest.pin, packet->source.thread, packet->source.device, packet->source.pin, packet->size);
 
     assert( packet->size >= sizeof(packet_t) );

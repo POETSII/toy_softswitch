@@ -163,19 +163,25 @@ extern "C" void softswitch_main()
 
          #ifdef SINGLESTEPPING
          // we can only procced if we have the execution token 
+         volatile void* outstanding_recvs[16];
+         uint32_t num_outstanding_recvs=0;         
+         softswitch_softswitch_log(2, "waiting for token");
          while(!token) {
-            if(tinsel_mboxCanRecv()) {
-               // wait until we get the token
-               for(uint32_t i=2; i<(tinsel_mboxSlotCount()-2); i++) {
-                  //search for the token
-                  packet_t *slot = (packet_t*)tinsel_mboxSlot(i);
-                  // check if it is a message on the special token pin 0xFF  
-                  if(slot->dest.pin == 0xFF) {
-                      token = true; 
-                  }
-               }
-            }
-         }
+             if(tinsel_mboxCanRecv()) {
+                volatile void* recvBuffer=tinsel_mboxRecv(); // Take the buffer from receive pool
+  	        assert(recvBuffer);
+                volatile const packet_t *curItem = (volatile const packet_t *)recvBuffer;
+                if(curItem->dest.pin != 0xFF) { // This is not a token pin message
+                  softswitch_softswitch_log(2, "Adding recv message to the outstanding recv buffer");
+                  outstanding_recvs[num_outstanding_recvs] = recvBuffer;
+                  num_outstanding_recvs++; 
+                } else {
+                  token = true; 
+                  tinsel_mboxAlloc(recvBuffer); // Put it back in receive pool
+                }
+             }
+        }
+         softswitch_softswitch_log(2, "got the token");
          #endif // SINGLESTEPPING
 
          #ifdef SINGLESTEPPING
@@ -205,8 +211,14 @@ extern "C" void softswitch_main()
          if(enableSendOverRecv){
              doSend=tinsel_mboxCanSend() && wantToSend;
              if(!doSend){
-                 assert(tinsel_mboxCanRecv());
-                 doRecv=true;
+                 #ifdef SINGLESTEPPING
+                   assert(tinsel_mboxCanRecv() || token);
+                   if(tinsel_mboxCanRecv()) 
+                       doRecv=true;
+                 #else
+                   assert(tinsel_mboxCanRecv());
+                   doRecv=true;
+                 #endif // SINGLESTEPPING
              }
          }else{
              // Default. Drain before fill.
@@ -225,35 +237,37 @@ extern "C" void softswitch_main()
   
          if(doRecv){
              softswitch_softswitch_log(2, "receive branch");
-             assert(tinsel_mboxCanRecv());
+ 
+             #ifdef SINGLESTEPPING
+               assert(tinsel_mboxCanRecv() | token);
+             #else
+               assert(tinsel_mboxCanRecv());
+             #endif
   
              /*! We always receive messages, even while a send is in progress (currSendTodo > 0) */
   
-             softswitch_softswitch_log(4, "calling mboxRecv");
-             auto recvBuffer=tinsel_mboxRecv();     // Take the buffer from receive pool
-  	     assert(recvBuffer);
-
+             volatile void* recvBuffer;
              #ifdef SINGLESTEPPING
-              const packet_t *curItem = (const packet_t *)recvBuffer;
-              if(curItem->dest.pin != 0xFF) { // This is the token pin remove
-                softswitch_onReceive(ctxt, (const void *)recvBuffer);  // Decode and dispatch
-                softswitch_softswitch_log(4, "giving buffer back");
-                tinsel_mboxAlloc(recvBuffer); // Put it back in receive pool
-              } else {
-                tinsel_mboxAlloc(recvBuffer); //return the buffer
-                if(tinsel_mboxCanRecv()){ // move onto the next item in the pool if avail 
-                   recvBuffer = tinsel_mboxRecv();   
-                   softswitch_onReceive(ctxt, (const void *)recvBuffer);  // Decode and dispatch
-                   softswitch_softswitch_log(4, "giving buffer back");
-                   tinsel_mboxAlloc(recvBuffer); // Put it back in receive pool
-                }
-              }
+               if(num_outstanding_recvs > 0) {
+                 softswitch_softswitch_log(2, "processing message from the outstanding recv buffer");
+                 recvBuffer = outstanding_recvs[num_outstanding_recvs];
+                 num_outstanding_recvs--;
+                 assert(recvBuffer);
+               } else {
+                 softswitch_softswitch_log(2, "calling mboxRecv");
+                 recvBuffer=tinsel_mboxRecv();     // Take the buffer from receive pool
+  	         assert(recvBuffer);
+               }
              #else
-                 softswitch_onReceive(ctxt, (const void *)recvBuffer);  // Decode and dispatch
+               softswitch_softswitch_log(4, "calling mboxRecv");
+               recvBuffer=tinsel_mboxRecv();     // Take the buffer from receive pool
+  	       assert(recvBuffer);
+             #endif
+
+             softswitch_onReceive(ctxt, (const void *)recvBuffer);  // Decode and dispatch
   
-                 softswitch_softswitch_log(4, "giving buffer back");
-                 tinsel_mboxAlloc(recvBuffer); // Put it back in receive pool
-             #endif // SINGLESTEPPING
+             softswitch_softswitch_log(4, "giving buffer back");
+             tinsel_mboxAlloc(recvBuffer); // Put it back in receive pool
   
          }
          if(doSend){
@@ -327,15 +341,18 @@ extern "C" void softswitch_main()
 
           
           #ifdef SINGLESTEPPING
-
+             
             // pass the token along to the next thread
             assert(token); // ensure that we have the token of execution 
             //TODO: make this configurable so it's not limited to single board systems
             uint32_t nextThread;
-            if(thisThreadId < (1024-1))
+            //if(thisThreadId < (1024-1))
+            if(thisThreadId < (10-1))
               nextThread = thisThreadId+1; 
             else
               nextThread = 0;
+            
+            softswitch_softswitch_log(3, "passing the token onto %x", nextThread);
 
             // wait until we can send
             tinselWaitUntil(TINSEL_CAN_SEND);
@@ -350,6 +367,8 @@ extern "C" void softswitch_main()
             tinsel_mboxSend(nextThread, sendBuffer);
 
             token = false; // token has been passed on 
+            // wait until we can send
+            tinselWaitUntil(TINSEL_CAN_SEND);
           #endif // SINGLESTEPPING
 
           softswitch_softswitch_log(3, "loop bottom");
