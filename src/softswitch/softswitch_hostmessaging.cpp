@@ -199,13 +199,14 @@ extern "C" void softswitch_flush_perfmon() {
 */
 
 //! handler exit call, terminates the executive with code as the return status
+// WARNING THIS IS NOW DEPRICATED
 extern "C" void softswitch_handler_exit(int code)
 {
   hostMsg msg;
   msg.source.thread = tinselId(); // Id of this thread 
   msg.type = 0xFF; // magic number for exit
   msg.payload[0] = (uint32_t) code;
-  hostMsgBufferPush(&msg); // push the exit code to the back of the queue
+  directHostMessageSlowSend(&msg); // send the assert via the UART bypassing the buffer
   return;
 }
 
