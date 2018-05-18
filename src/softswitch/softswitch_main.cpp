@@ -26,7 +26,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message);
     \param pTargets If numTargets>0, this will be pointed at an array with numTargets elements
     \retval Size of message in bytes
 */
-extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets, uint8_t *isApp);
+extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets, uint32_t *isApp);
 
 extern "C" void *memset( void *dest, int ch, size_t count );
 
@@ -84,7 +84,7 @@ extern "C" void softswitch_main()
     const address_t *currSendAddressList=0;
     uint32_t currSendTodo=0;
     uint32_t currSize=0;
-    uint8_t isApp=0; // is 1 if we are sending on an application pin
+    uint32_t isApp=0; // is 1 if we are sending on an application pin
 
     // Assumption: all buffers are owned by software, so we have to give them to mailbox
     // We only keep hold of slot 0 and [ tinsel_mboxSlotCount() - HOSTBUFFER_CNT, tinsel_mboxSlotCount()](for host comms)

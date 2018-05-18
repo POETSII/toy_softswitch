@@ -71,7 +71,8 @@ typedef struct _InputPinVTable
     uint16_t propertiesSize;
     uint16_t stateSize;
     const char *name;
-    uint8_t isApp; // if it's an application pin or not
+    uint32_t isApp; // if it's an application pin or not
+    uint32_t pad[11]; // padding
 }InputPinVTable;
 
 typedef struct _OutputPinVTable
@@ -79,8 +80,9 @@ typedef struct _OutputPinVTable
     send_handler_t sendHandler;
     unsigned messageSize;
     const char *name;
-    uint16_t isApp; // if it's an application pin or not
-    uint16_t messageType_numid; // numerical ID used to identify the message type at the executive 
+    uint32_t isApp; // if it's an application pin or not
+    uint32_t messageType_numid; // numerical ID used to identify the message type at the executive 
+    uint32_t pad[11]; // padding
 }OutputPinVTable;
 
 // Gives access to the code associated with each device
@@ -93,6 +95,7 @@ typedef struct _DeviceTypeVTable
     const InputPinVTable *inputPins;
     compute_handler_t computeHandler;
     const char *id; // Unique id of the device type
+     uint32_t pad[9]; //padding
 }DeviceTypeVTable;
 
 // Gives the distribution list when sending from a particular pin
@@ -102,6 +105,7 @@ typedef struct _OutputPinTargets
 {
     unsigned numTargets;
     address_t *targets; 
+    uint32_t pad[14]; //padding
 }OutputPinTargets;
 
 typedef struct _InputPinBinding
@@ -109,6 +113,7 @@ typedef struct _InputPinBinding
     address_t source;
     const void *edgeProperties; // On startup this is zero or a byte offset in global properties array
     void *edgeState;            // On startup this is zero or a byte offset into global state array
+    uint32_t pad[12]; //padding
 }InputPinBinding;
 
 // Allows us to bind incoming messages to the appropriate edge properties
@@ -120,6 +125,8 @@ typedef struct _InputPinSources
 {
     unsigned numSources;  // This will be null if the input has properties/state
     const InputPinBinding *sourceBindings; // This will be null if the input had no properties or state
+    uint32_t pad[14]; // padding
+   
 }InputPinSources;
 
 //! Context is fixed size. Points to varying size properties and state
@@ -135,7 +142,7 @@ typedef struct _DeviceContext
     const char *id;              // unique id of the device
 
     uint32_t rtsFlags;
-    bool rtc;
+    uint32_t rtc;
 
     struct _DeviceContext *prev;
     struct _DeviceContext *next;
@@ -199,7 +206,7 @@ typedef struct _PThreadContext
     uint32_t hbuf_head; // head of the hostMsg circular buffer
     uint32_t hbuf_tail; // tail of the hostMsg circular buffer 
 
-    uint32_t pad[15]; // padding to ensure cache lines are not shared 
+    uint32_t pad[10]; // padding to ensure cache lines are not shared 
 
     //---------- hierarchical performance counters -----------
     #ifdef SOFTSWITCH_ENABLE_PROFILE
