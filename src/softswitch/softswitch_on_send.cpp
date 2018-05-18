@@ -128,7 +128,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
 
     softswitch_softswitch_log(4, "softswitch_onSend : updating RTS");    
     dev->rtsFlags=0;    // Reflect that it is no longer on the RTC list due to the pop
-    dev->rtc=false; 
+    dev->rtc=0; 
     softswitch_UpdateRTS(ctxt, dev);
     softswitch_softswitch_log(4, "softswitch_onSend : rtsFlags=%x", dev->rtsFlags);    
     

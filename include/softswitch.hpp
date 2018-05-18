@@ -71,7 +71,7 @@ typedef struct _InputPinVTable
     uint16_t propertiesSize;
     uint16_t stateSize;
     const char *name;
-    uint8_t isApp; // if it's an application pin or not
+    uint32_t isApp; // if it's an application pin or not
 }InputPinVTable;
 
 typedef struct _OutputPinVTable
@@ -135,7 +135,7 @@ typedef struct _DeviceContext
     const char *id;              // unique id of the device
 
     uint32_t rtsFlags;
-    bool rtc;
+    uint32_t rtc;
 
     struct _DeviceContext *prev;
     struct _DeviceContext *next;
@@ -199,7 +199,7 @@ typedef struct _PThreadContext
     uint32_t hbuf_head; // head of the hostMsg circular buffer
     uint32_t hbuf_tail; // tail of the hostMsg circular buffer 
 
-    uint32_t pad[15]; // padding to ensure cache lines are not shared 
+    uint32_t pad[10]; // padding to ensure cache lines are not shared 
 
     //---------- hierarchical performance counters -----------
     #ifdef SOFTSWITCH_ENABLE_PROFILE

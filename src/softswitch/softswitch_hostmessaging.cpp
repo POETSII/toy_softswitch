@@ -206,7 +206,9 @@ extern "C" void softswitch_handler_exit(int code)
   msg.source.thread = tinselId(); // Id of this thread 
   msg.type = 0xFF; // magic number for exit
   msg.payload[0] = (uint32_t) code;
-  directHostMessageSlowSend(&msg); // send the assert via the UART bypassing the buffer
+  // push onto the back of the buffer
+  hostMsgBufferPush(&msg);
+  //directHostMessageSlowSend(&msg); // send the assert via the UART bypassing the buffer
   return;
 }
 

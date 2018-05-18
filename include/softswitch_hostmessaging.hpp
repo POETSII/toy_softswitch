@@ -128,6 +128,11 @@ void softswitch_handler_log_impl(int level, const char *msg, const Param& ... pa
   //  hmsg.payload[i] = params[i]; 
   //}
 
+  // check to ensure that the hostMessage buffer has enough space (otherwise pop via UART)
+  if(hostMsgBufferSpace() == 0) {
+    hostMessageSlowPopSend();   
+  }
+
   // push the message onto the hostMsgBuffer
   hostMsgBufferPush(&hmsg);
 
