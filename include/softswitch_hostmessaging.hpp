@@ -147,8 +147,6 @@ template<typename ... Param>
 void softswitch_softswitch_log_impl(int level, const char *msg, const Param& ... param){
 
   PThreadContext *ctxt=softswitch_getCtxt();
-  assert(ctxt->currentHandlerType!=0); // can't call handler log when not in a handler
-  assert(ctxt->currentDevice < ctxt->numDevices); // Current device must be in range
 
   if(level > ctxt->applLogLevel)
     return;
