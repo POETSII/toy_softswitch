@@ -115,10 +115,25 @@ void softswitch_handler_log_impl(int level, const char *msg, const Param& ... pa
   hmsg.source.thread = tinselId();
   hmsg.source.device = deviceContext->index; 
   hmsg.type = 0xF0; // magic number for STDOUT
+
+  // String address of the message 
   hmsg.payload[0] = (unsigned)static_cast<const void*>(msg);
+  
+  // current handler type TODO: this can be worked out by pts-serve using src addr
+  hmsg.payload[1] = ctxt->currentHandlerType; 
+  // pin name
+  const char* pin;
+  if(ctxt->currentHandlerType==1){
+    pin=deviceContext->vtable->inputPins[ctxt->currentPin].name;
+  }else if(ctxt->currentHandlerType==2){
+    pin=deviceContext->vtable->outputPins[ctxt->currentPin].name;
+  }
+  hmsg.payload[2] = (unsigned)static_cast<const void*>(pin); // send the str addr of the pin name
+  hmsg.payload[3] = (unsigned)static_cast<const void*>(deviceContext->id); // send the str addr of the device name
+  // TODO: above could be done more efficiently if pts-serve looked this up instead of sending the message 
 
   // peel off the parameters from the variadic
-  uint32_t param_cnt = 1;
+  uint32_t param_cnt = 4;
   log_peel_params(&hmsg, &param_cnt, param...);
   assert(param_cnt <= HOST_MSG_PAYLOAD);
 
