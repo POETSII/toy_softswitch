@@ -205,7 +205,8 @@ typedef struct _PThreadContext
     #ifdef SOFTSWITCH_ENABLE_PROFILE
     uint32_t thread_cycles_tstart; // value of the cycle count before the last flush. 
     uint32_t thread_cycles; // total cycles for the entire thread 
-        uint32_t blocked_cycles; //the number of cycles the thread is blocked
+        uint32_t send_blocked_cycles; //the number of cycles the thread is blocked waiting to send
+        uint32_t recv_blocked_cycles; //the number of cycles the thread is blocked waiting to recv
         uint32_t idle_cycles; //the number of cycles the thread is idle
         uint32_t perfmon_cycles; //the number of cycles used for flushing the performance counters 
         uint32_t send_cycles; //the number of cycles used in sending a message

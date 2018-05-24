@@ -52,7 +52,8 @@ extern "C" void perfmon_flush_counters(PThreadContext *ctxt)
     const DeviceContext *deviceContext = ctxt->devices+ctxt->currentDevice;
     
     uint32_t thread_cycles = ctxt->thread_cycles; 
-    uint32_t blocked_cycles = ctxt->blocked_cycles; 
+    uint32_t send_blocked_cycles = ctxt->send_blocked_cycles; 
+    uint32_t recv_blocked_cycles = ctxt->recv_blocked_cycles; 
     uint32_t idle_cycles = ctxt->idle_cycles;
     uint32_t perfmon_cycles = ctxt->perfmon_cycles; 
     uint32_t send_cycles = ctxt->send_cycles; 
@@ -61,13 +62,14 @@ extern "C" void perfmon_flush_counters(PThreadContext *ctxt)
     uint32_t recv_handler_cycles = ctxt->recv_handler_cycles; 
 
                                     // tid, total, blocked, idle, perfmon, send, sendhand, recv, recvhand
-    append_profile_printf(left, dst, "[%08x], %u, %u, %u, %u, %u, %u, %u, %u\n", tinsel_myId(), thread_cycles, blocked_cycles, idle_cycles, perfmon_cycles, send_cycles, send_handler_cycles, recv_cycles, recv_handler_cycles); 
+    append_profile_printf(left, dst, "[%08x], %u, %u, %u, %u, %u, %u, %u, %u, %u\n", tinsel_myId(), thread_cycles, send_blocked_cycles, recv_blocked_cycles, idle_cycles, perfmon_cycles, send_cycles, send_handler_cycles, recv_cycles, recv_handler_cycles); 
 
     tinsel_puts(buffer);
     
     //Reset the performance counters
     ctxt->thread_cycles = 0;
-    ctxt->blocked_cycles = 0;
+    ctxt->send_blocked_cycles = 0;
+    ctxt->recv_blocked_cycles = 0;
     ctxt->idle_cycles = 0;
     ctxt->perfmon_cycles = 0;
     ctxt->send_cycles = 0;

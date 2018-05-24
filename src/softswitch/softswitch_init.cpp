@@ -10,7 +10,8 @@ void zeroProfileCounters(PThreadContext *ctxt)
 {
     ctxt->thread_cycles_tstart = 0;
     ctxt->thread_cycles = 0;
-    ctxt->blocked_cycles = 0;
+    ctxt->send_blocked_cycles = 0;
+    ctxt->recv_blocked_cycles = 0;
     ctxt->idle_cycles = 0;
     ctxt->perfmon_cycles = 0;
     ctxt->send_cycles = 0;

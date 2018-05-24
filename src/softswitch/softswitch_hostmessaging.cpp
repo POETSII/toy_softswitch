@@ -168,20 +168,22 @@ extern "C" void softswitch_flush_perfmon() {
 
   // load the performance counter values into the payload
   msg.payload[0] = ctxt->thread_cycles;
-  msg.payload[1] = ctxt->blocked_cycles;
-  msg.payload[2] = ctxt->idle_cycles;
-  msg.payload[3] = ctxt->perfmon_cycles;
-  msg.payload[4] = ctxt->send_cycles;
-  msg.payload[5] = ctxt->send_handler_cycles;
-  msg.payload[6] = ctxt->recv_cycles;
-  msg.payload[7] = ctxt->recv_handler_cycles;
+  msg.payload[1] = ctxt->send_blocked_cycles;
+  msg.payload[2] = ctxt->recv_blocked_cycles;
+  msg.payload[3] = ctxt->idle_cycles;
+  msg.payload[4] = ctxt->perfmon_cycles;
+  msg.payload[5] = ctxt->send_cycles;
+  msg.payload[6] = ctxt->send_handler_cycles;
+  msg.payload[7] = ctxt->recv_cycles;
+  msg.payload[8] = ctxt->recv_handler_cycles;
 
   // push onto the back of the buffer
   hostMsgBufferPush(&msg);
 
   // reset all the performance counters
   ctxt->thread_cycles = 0;
-  ctxt->blocked_cycles = 0;
+  ctxt->send_blocked_cycles = 0;
+  ctxt->recv_blocked_cycles = 0;
   ctxt->idle_cycles = 0;
   ctxt->perfmon_cycles = 0;
   ctxt->send_cycles = 0;

@@ -146,6 +146,7 @@ extern "C" void softswitch_main()
                     } else {
                         ctxt->thread_cycles = deltaCycles(ctxt->thread_cycles_tstart, tinsel_CycleCount());
                         volatile uint32_t thread_start = tinsel_CycleCount();
+                        ctxt->thread_cycles_tstart = thread_start;
                         // check if there is space in the host buffer
                         if(!hostMsgBufferSpace()) { // if not flush an element of the buffer over UART
                           hostMessageSlowPopSend(); // clear space
@@ -197,7 +198,11 @@ extern "C" void softswitch_main()
          #endif
          tinsel_mboxWaitUntil( (tinsel_WakeupCond) wakeupFlags );
          #ifdef SOFTSWITCH_ENABLE_PROFILE
-         ctxt->blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount()); 
+         if(wantToSend) {
+             ctxt->send_blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount()); 
+         } else {
+             ctxt->recv_blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount()); 
+         }
          #endif
          
          bool doRecv=false;
