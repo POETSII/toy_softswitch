@@ -204,13 +204,16 @@ extern "C" void softswitch_flush_perfmon() {
 // WARNING THIS IS NOW DEPRICATED
 extern "C" void softswitch_handler_exit(int code)
 {
+  // completely drain the host buffer down the sidechannel then send the exit command 
+  while(hostMsgBufferSize() > 0) {
+     hostMessageSlowPopSend();
+  }
+
   hostMsg msg;
   msg.source.thread = tinselId(); // Id of this thread 
   msg.type = 0xFF; // magic number for exit
   msg.payload[0] = (uint32_t) code;
-  // push onto the back of the buffer
-  hostMsgBufferPush(&msg);
-  //directHostMessageSlowSend(&msg); // send the assert via the UART bypassing the buffer
+  directHostMessageSlowSend(&msg); // send the assert via the UART bypassing the buffer
   return;
 }
 
