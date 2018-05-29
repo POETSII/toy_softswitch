@@ -76,16 +76,16 @@ extern "C" void softswitch_main()
         token = false;
       }
     #endif
-    
-    softswitch_softswitch_log(1, "softswitch_main()");
-    softswitch_init(ctxt);
-    
+
     // Create a software buffer for the host messages
     hostMsg hostMsgBuffer[HOSTBUFFER_SIZE];
     ctxt->hostBuffer = hostMsgBuffer;
     ctxt->hbuf_head = 0; // head of the host message buffer 
     ctxt->hbuf_tail = 0; // tail of the host message buffer 
-
+    
+    softswitch_softswitch_log(1, "softswitch_main()");
+    softswitch_init(ctxt);
+    
     // We'll hold onto this one
     volatile void *sendBuffer=tinsel_mboxSlot(0);
     // Slot 1 we will keep for host messages
