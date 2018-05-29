@@ -22,6 +22,7 @@ RV_CXX = riscv64-unknown-elf-g++
 
 # Local compiler flags
 CFLAGS = $(RV_CFLAGS) -O2 -I $(INC) -I $(PTSSERVE_INC) -Os -g -Wno-unused-variable -Wno-unused-local-typedefs
+CFLAGS += -ffp-contract=off
 CFLAGS += -fomit-frame-pointer
 CFLAGS += -fno-default-inline
 CFLAGS += -fno-zero-initialized-in-bss
