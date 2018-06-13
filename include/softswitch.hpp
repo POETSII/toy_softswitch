@@ -140,6 +140,8 @@ typedef struct _DeviceContext
     struct _DeviceContext *prev;
     struct _DeviceContext *next;
 
+    uint32_t isExternal; // if 1 this is an external device type, otherwise 0 and is a standard device type
+
     //uint32_t pad[5]; // padding to ensure cache line is not shared
 }DeviceContext;
 
