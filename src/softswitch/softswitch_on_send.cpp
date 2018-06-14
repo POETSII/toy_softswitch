@@ -97,7 +97,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     uint32_t messageSize=vtable->outputPins[pinIndex].messageSize;
 
     if(doSend){
-        if(vtable->outputPins[pinIndex].isApp) { // it is an application pin we only have 1 target the host
+        if((vtable->outputPins[pinIndex].isApp)) { // it is an application pin we only have 1 target the host
           softswitch_softswitch_log(3, "is an application pin");
           *isApp = 1; // it is an application pin
           numTargets=1;

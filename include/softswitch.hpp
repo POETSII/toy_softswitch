@@ -110,7 +110,6 @@ typedef struct _InputPinBinding
     address_t source;
     const void *edgeProperties; // On startup this is zero or a byte offset in global properties array
     void *edgeState;            // On startup this is zero or a byte offset into global state array
-    bool isExtern; // true if this is from an external device
 }InputPinBinding;
 
 // Allows us to bind incoming messages to the appropriate edge properties

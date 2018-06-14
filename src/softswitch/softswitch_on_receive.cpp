@@ -55,12 +55,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
 
     // Am I external?
     if(isExternal) {
-        // Was this message from "myself" (host) or was it from another device? 
-        if( (ctxt->threadId == packet->source.thread) && (dev->index == packet->source.device) ) {
-           // Yes - from "myself" - we need to forward this message to all edges connected to the associated pin
-           // currently unsupported!
-        } else {
-           // No - from someone else - we need to immediately forward this message to the host
+           // we need to immediately forward this message to the host
            // use the hostmessaging infrastructure
            // I don't think this manual copy is required I can probably just cast it into a hostMsg
            hostMsg *fwdMsg;
@@ -73,7 +68,6 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
               fwdMsg->payload[i] = packet_payload[i];
            }
            hostMsgBufferPush(fwdMsg); // Push a copy onto the hostMessage buffer
-        }
     } else {
         // Map to the particular pin
         unsigned pinIndex=packet->dest.pin;
