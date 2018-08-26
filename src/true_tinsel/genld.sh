@@ -11,7 +11,6 @@ done <<< `python ${POETS_TINSEL_ROOT}/config.py envs`
 
 # Compute space available for instructions
 MaxInstrBytes=$((4 * 2**$LogInstrsPerCore - $MaxBootImageBytes))
-#MaxInstrBytes=$((16 * 2**$LogInstrsPerCore - $MaxBootImageBytes))
 
 cat - << EOF
 /* THIS FILE HAS BEEN GENERATED AUTOMATICALLY. */
@@ -22,7 +21,7 @@ OUTPUT_ARCH( "riscv" )
 MEMORY
 {
   instrs  : ORIGIN = $MaxBootImageBytes, LENGTH = $MaxInstrBytes
-  globals : ORIGIN = 0x100000, LENGTH = 0x1ff00000
+  globals : ORIGIN = $DRAMBase, LENGTH = $DRAMGlobalsLength
 }
 
 SECTIONS

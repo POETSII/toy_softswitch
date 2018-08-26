@@ -11,7 +11,7 @@
 #ifdef SOFTSWITCH_ENABLE_PROFILE
 #include "softswitch_perfmon.hpp"
 #else
-typedef unsigned long size_t;
+//typedef unsigned long size_t;
 #endif
 
 //! Initialise data-structures (e.g. RTS)
