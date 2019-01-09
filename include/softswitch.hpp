@@ -34,6 +34,12 @@ typedef struct _packet_t
 }packet_t;
 #pragma pack(pop)
 
+typedef void (*init_handler_t)(
+    const void *graphProps,
+    const void *devProps,
+    void *devState
+);
+
 typedef uint32_t (*ready_to_send_handler_t)(
     const void *graphProps,
     const void *devProps,
@@ -80,12 +86,13 @@ typedef struct _OutputPinVTable
     unsigned messageSize;
     const char *name;
     uint16_t isApp; // if it's an application pin or not
-    uint16_t messageType_numid; // numerical ID used to identify the message type at the executive 
+    uint16_t messageType_numid; // numerical ID used to identify the message type at the executive
 }OutputPinVTable;
 
 // Gives access to the code associated with each device
 typedef struct _DeviceTypeVTable
 {
+    init_handler_t initHandler;
     ready_to_send_handler_t readyToSendHandler;
     unsigned numOutputs;
     const OutputPinVTable *outputPins;
@@ -101,7 +108,7 @@ typedef struct _DeviceTypeVTable
 typedef struct _OutputPinTargets
 {
     unsigned numTargets;
-    address_t *targets; 
+    address_t *targets;
     bool isExtern; // true if this destination is an external device
 }OutputPinTargets;
 
@@ -153,7 +160,7 @@ typedef struct _DeviceContext
 */
 typedef struct _PThreadContext
 {
-    
+
     // Read-only parts
     unsigned threadId;
 
@@ -181,11 +188,11 @@ typedef struct _PThreadContext
     int hardLogLevel;        // Controls how much output is printed from hardware
 
     // This is used by the softswitch to track which device (if any) is active, so that we know during things like handler_log
-    uint32_t currentDevice; 
+    uint32_t currentDevice;
     int currentHandlerType;   // 0 = None, 1 = Recv, 2 = Send
     uint32_t currentPin; // Index of the pin (for recv and send)
     uint32_t currentSize; // The current message size (in bytes)
-    
+
     // If true, then the softswitch must go through and turn relative
     // pointers during init. All relevant pointers should only be read/written
     // by this thread, so it should be possible to do it on a per-thread basis.
@@ -198,24 +205,24 @@ typedef struct _PThreadContext
 
     // used to keep track of the current pending hostMessages
     // Maximum host messages per handler is defined as HOSTBUFFER_MSG
-    volatile hostMsg *hostBuffer; // pointer to the hostMessage buffer 
+    volatile hostMsg *hostBuffer; // pointer to the hostMessage buffer
     uint32_t hbuf_head; // head of the hostMsg circular buffer
-    uint32_t hbuf_tail; // tail of the hostMsg circular buffer 
+    uint32_t hbuf_tail; // tail of the hostMsg circular buffer
 
-    uint32_t pad[10]; // padding to ensure cache lines are not shared 
+    uint32_t pad[10]; // padding to ensure cache lines are not shared
 
     //---------- hierarchical performance counters -----------
     #ifdef SOFTSWITCH_ENABLE_PROFILE
-    uint32_t thread_cycles_tstart; // value of the cycle count before the last flush. 
-    uint32_t thread_cycles; // total cycles for the entire thread 
+    uint32_t thread_cycles_tstart; // value of the cycle count before the last flush.
+    uint32_t thread_cycles; // total cycles for the entire thread
         uint32_t send_blocked_cycles; //the number of cycles the thread is blocked waiting to send
         uint32_t recv_blocked_cycles; //the number of cycles the thread is blocked waiting to recv
         uint32_t idle_cycles; //the number of cycles the thread is idle
-        uint32_t perfmon_cycles; //the number of cycles used for flushing the performance counters 
+        uint32_t perfmon_cycles; //the number of cycles used for flushing the performance counters
         uint32_t send_cycles; //the number of cycles used in sending a message
-            uint32_t send_handler_cycles; //the number of cycles used in the send_handler 
+            uint32_t send_handler_cycles; //the number of cycles used in the send_handler
         uint32_t recv_cycles; //the number of cycles used in sending a message
-            uint32_t recv_handler_cycles; //the number of cycles used in the send_handler 
+            uint32_t recv_handler_cycles; //the number of cycles used in the send_handler
     #endif
     //-------------------------------------------
 }PThreadContext;
