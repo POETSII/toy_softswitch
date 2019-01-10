@@ -13,13 +13,13 @@ extern "C" void tinsel_puts(const char *);
 static unsigned right_most_one(uint32_t x)
 {
     assert(x);
-    
+
     unsigned index=0;
     while(!(x&1)){
         index++;
         x=x>>1;
     }
-    
+
     return index;
 }
 
@@ -30,14 +30,14 @@ static unsigned right_most_one(uint32_t x)
     \retval Size of message in bytes
 */
 extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets, uint8_t *isApp)
-{ 
+{
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
     uint32_t tstart = tinsel_CycleCount();
     #endif
 
-    softswitch_softswitch_log(3, "softswitch_onSend : begin");    
-    
+    softswitch_softswitch_log(3, "softswitch_onSend : begin");
+
     numTargets=0;
     pTargets=0;
 
@@ -46,22 +46,22 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
         return 0;
     }
 
-    
+
     const DeviceTypeVTable *vtable=dev->vtable;
 
     assert(dev->rtsFlags);
     unsigned pinIndex=right_most_one(dev->rtsFlags);
 
-    
-    softswitch_softswitch_log(4, "softswitch_onSend : device=%08x:%04x=%s, rtsFlags=%x, selected=%u", ctxt->threadId, dev->index,  dev->id, dev->rtsFlags, pinIndex);    
+
+    softswitch_softswitch_log(4, "softswitch_onSend : device=%08x:%04x=%s, rtsFlags=%x, selected=%u", ctxt->threadId, dev->index,  dev->id, dev->rtsFlags, pinIndex);
 
 
     send_handler_t handler=vtable->outputPins[pinIndex].sendHandler;
 
-    softswitch_softswitch_log(4, "softswitch_onSend : calling application handler");    
+    softswitch_softswitch_log(4, "softswitch_onSend : calling application handler");
 
     ctxt->lamport++;
-    
+
     // Needed for handler logging
     ctxt->currentDevice=dev->index;
     ctxt->currentHandlerType=2;
@@ -80,7 +80,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
 
     bool doSend=handler(
         ctxt->graphProps,
-        dev->properties, 
+        dev->properties,
         dev->state,
 	payload
     );
@@ -90,8 +90,8 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     ctxt->send_handler_cycles += deltaCycles(hstart, hend);
     #endif
 
-    ctxt->currentHandlerType=0;
-    
+    //ctxt->currentHandlerType=0;
+
     softswitch_softswitch_log(4, "softswitch_onSend : application handler done, doSend=%d", doSend?1:0);
 
     uint32_t messageSize=vtable->outputPins[pinIndex].messageSize;
@@ -104,7 +104,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
           ((hostMsg*)message)->source.thread=ctxt->threadId;
           ((hostMsg*)message)->source.device=dev->index;
           ((hostMsg*)message)->source.pin=pinIndex;
-          ((hostMsg*)message)->type=vtable->outputPins[pinIndex].messageType_numid; // get the numerical id for messagetype 
+          ((hostMsg*)message)->type=vtable->outputPins[pinIndex].messageType_numid; // get the numerical id for messagetype
         } else { // Otherwise we need to lookup the targets in the DeviceContext
           softswitch_softswitch_log(3, "is not an application pin");
           *isApp=0; // it is not an application pin
@@ -116,24 +116,24 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
           ((packet_t*)message)->size=messageSize;
         }
 
-        softswitch_softswitch_log(4, "softswitch_onSend : source = %x:%x:%x", ctxt->threadId, dev->index, pinIndex);    
+        softswitch_softswitch_log(4, "softswitch_onSend : source = %x:%x:%x", ctxt->threadId, dev->index, pinIndex);
     }
 
     uint32_t payloadSize=messageSize - sizeof(packet_t);
     for(uint32_t i=0; i<payloadSize; i++){
       softswitch_softswitch_log(5, "softswitch_onSend :   payload[%u] = %u", i, (uint8_t)payload[i]);
     }
-    
-    softswitch_softswitch_log(4, "softswitch_onSend : messageSize=%u, numTargets=%u, pTargets=%p", messageSize, numTargets, pTargets);    
 
-    softswitch_softswitch_log(4, "softswitch_onSend : updating RTS");    
+    softswitch_softswitch_log(4, "softswitch_onSend : messageSize=%u, numTargets=%u, pTargets=%p", messageSize, numTargets, pTargets);
+
+    softswitch_softswitch_log(4, "softswitch_onSend : updating RTS");
     dev->rtsFlags=0;    // Reflect that it is no longer on the RTC list due to the pop
-    dev->rtc=0; 
+    dev->rtc=0;
     softswitch_UpdateRTS(ctxt, dev);
-    softswitch_softswitch_log(4, "softswitch_onSend : rtsFlags=%x", dev->rtsFlags);    
-    
-    softswitch_softswitch_log(3, "softswitch_onSend : end");    
-    
+    softswitch_softswitch_log(4, "softswitch_onSend : rtsFlags=%x", dev->rtsFlags);
+
+    softswitch_softswitch_log(3, "softswitch_onSend : end");
+
     #ifdef SOFTSWITCH_ENABLE_PROFILE
     ctxt->send_cycles += deltaCycles(tstart, tinsel_CycleCount());
     #endif

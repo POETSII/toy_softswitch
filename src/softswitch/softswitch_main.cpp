@@ -11,7 +11,7 @@
 #ifdef SOFTSWITCH_ENABLE_PROFILE
 #include "softswitch_perfmon.hpp"
 #else
-typedef unsigned long size_t;
+// typedef unsigned long size_t;
 #endif
 
 //! Initialise data-structures (e.g. RTS)
@@ -60,7 +60,7 @@ const int enableSendOverRecv=0;
 
 
 extern "C" void softswitch_main()
-{ 
+{
     PThreadContext *ctxt=softswitch_getContext();
     if(ctxt==0){
       while(1);
@@ -70,7 +70,7 @@ extern "C" void softswitch_main()
 
     #ifdef SINGLESTEPPING // if we are in sequential execution mode then thread 1 kicks it off
       bool token;
-      if(thisThreadId == 0) { 
+      if(thisThreadId == 0) {
         token = true; // start with the token of execution
       } else {
         token = false;
@@ -80,12 +80,12 @@ extern "C" void softswitch_main()
     // Create a software buffer for the host messages
     hostMsg hostMsgBuffer[HOSTBUFFER_SIZE];
     ctxt->hostBuffer = hostMsgBuffer;
-    ctxt->hbuf_head = 0; // head of the host message buffer 
-    ctxt->hbuf_tail = 0; // tail of the host message buffer 
-    
+    ctxt->hbuf_head = 0; // head of the host message buffer
+    ctxt->hbuf_tail = 0; // tail of the host message buffer
+
     softswitch_softswitch_log(1, "softswitch_main()");
     softswitch_init(ctxt);
-    
+
     // We'll hold onto this one
     volatile void *sendBuffer=tinsel_mboxSlot(0);
     // Slot 1 we will keep for host messages
@@ -114,9 +114,9 @@ extern "C" void softswitch_main()
     #endif
 
     while(1) {
-    
+
         softswitch_softswitch_log(2, "Loop top");
-    
+
         // true if there is enough space in the host buffer to store the handlers
         // if this is false then draining the hostbuffer is a priority
         bool adequateHostBufferSpace = (hostMsgBufferSpace() >= MAX_HOST_PER_HANDLER);
@@ -140,7 +140,7 @@ extern "C" void softswitch_main()
             if(!softswitch_onIdle(ctxt)) {
                 #ifdef SOFTSWITCH_ENABLE_PROFILE
                 if(start_perfmon) {
-                    ctxt->idle_cycles += deltaCycles(idle_start, tinsel_CycleCount()); 
+                    ctxt->idle_cycles += deltaCycles(idle_start, tinsel_CycleCount());
                     if(perfmon_flush_rate_cnt < perfmon_flush_rate) {
                         perfmon_flush_rate_cnt = perfmon_flush_rate_cnt + 1;
                     } else {
@@ -163,9 +163,9 @@ extern "C" void softswitch_main()
         }
 
          #ifdef SINGLESTEPPING
-         // we can only procced if we have the execution token 
+         // we can only procced if we have the execution token
          volatile void* outstanding_recvs[16];
-         uint32_t num_outstanding_recvs=0;         
+         uint32_t num_outstanding_recvs=0;
          softswitch_softswitch_log(2, "waiting for token");
          while(!token) {
              if(tinsel_mboxCanRecv()) {
@@ -175,9 +175,9 @@ extern "C" void softswitch_main()
                 if(curItem->dest.pin != 0xFF) { // This is not a token pin message
                   softswitch_softswitch_log(2, "Adding recv message to the outstanding recv buffer");
                   outstanding_recvs[num_outstanding_recvs] = recvBuffer;
-                  num_outstanding_recvs++; 
+                  num_outstanding_recvs++;
                 } else {
-                  token = true; 
+                  token = true;
                   tinsel_mboxAlloc(recvBuffer); // Put it back in receive pool
                 }
              }
@@ -186,30 +186,30 @@ extern "C" void softswitch_main()
          #endif // SINGLESTEPPING
 
          #ifdef SINGLESTEPPING
-            uint32_t wakeupFlags = (tinsel_CAN_RECV | tinsel_CAN_SEND); 
-         #else 
+            uint32_t wakeupFlags = (tinsel_CAN_RECV | tinsel_CAN_SEND);
+         #else
              uint32_t wakeupFlags = wantToSend ? (tinsel_CAN_RECV|tinsel_CAN_SEND) : tinsel_CAN_RECV;
              softswitch_softswitch_log(3, "waiting for send=%d, recv=%d", wakeupFlags&tinsel_CAN_SEND, (wakeupFlags&tinsel_CAN_RECV)?1:0);
          #endif
-  
-  
+
+
          #ifdef SOFTSWITCH_ENABLE_PROFILE
-         uint32_t blocked_start = tinsel_CycleCount(); 
+         uint32_t blocked_start = tinsel_CycleCount();
          #endif
          tinsel_mboxWaitUntil( (tinsel_WakeupCond) wakeupFlags );
          #ifdef SOFTSWITCH_ENABLE_PROFILE
          if(wantToSend) {
-             ctxt->send_blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount()); 
+             ctxt->send_blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount());
          } else {
-             ctxt->recv_blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount()); 
+             ctxt->recv_blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount());
          }
          #endif
-         
+
          bool doRecv=false;
          bool doSend=false;
 
          while(!adequateHostBufferSpace) { //Drain the host buffer over UART to prevent deadlock
-           hostMessageSlowPopSend(); 
+           hostMessageSlowPopSend();
            adequateHostBufferSpace = (hostMsgBufferSpace() >= MAX_HOST_PER_HANDLER);
          }
 
@@ -218,7 +218,7 @@ extern "C" void softswitch_main()
              if(!doSend){
                  #ifdef SINGLESTEPPING
                    assert(tinsel_mboxCanRecv() || token);
-                   if(tinsel_mboxCanRecv()) 
+                   if(tinsel_mboxCanRecv())
                        doRecv=true;
                  #else
                    assert(tinsel_mboxCanRecv());
@@ -227,7 +227,7 @@ extern "C" void softswitch_main()
              }
          }else{
              // Default. Drain before fill.
-  	     doRecv=tinsel_mboxCanRecv() && adequateHostBufferSpace;   
+  	     doRecv=tinsel_mboxCanRecv() && adequateHostBufferSpace;
   	     if(!doRecv){
                #ifdef SINGLESTEPPING
   	         assert((tinsel_mboxCanSend() && wantToSend) || token);
@@ -239,18 +239,18 @@ extern "C" void softswitch_main()
                #endif
   	     }
          }
-  
+
          if(doRecv){
              softswitch_softswitch_log(2, "receive branch");
- 
+
              #ifdef SINGLESTEPPING
                assert(tinsel_mboxCanRecv() | token);
              #else
                assert(tinsel_mboxCanRecv());
              #endif
-  
+
              /*! We always receive messages, even while a send is in progress (currSendTodo > 0) */
-  
+
              volatile void* recvBuffer;
              #ifdef SINGLESTEPPING
                if(num_outstanding_recvs > 0) {
@@ -270,29 +270,29 @@ extern "C" void softswitch_main()
              #endif
 
              softswitch_onReceive(ctxt, (const void *)recvBuffer);  // Decode and dispatch
-  
+
              softswitch_softswitch_log(4, "giving buffer back");
              tinsel_mboxAlloc(recvBuffer); // Put it back in receive pool
-  
+
          }
          if(doSend){
              softswitch_softswitch_log(2, "send branch");
-  
+
              assert(wantToSend); // Only come here if we have something to do
              assert(tinsel_mboxCanSend()); // Only reason we could have got here
-   
+
              // first clear any host messages
-             if(!hostBufferEmpty) {           
-               hostMessageBufferPopSend(); 
+             if(!hostBufferEmpty) {
+               hostMessageBufferPopSend();
              } else {
-  
+
              /* Either we have to finish sending a previous message to more
-                addresses, or we get the chance to send a new message. 
+                addresses, or we get the chance to send a new message.
                 or we need to send a message to the host */
-   
+
                    if(currSendTodo==0){
                        softswitch_softswitch_log(3, "preparing new message");
-    
+
                        // Prepare a new packet to send
                        currSize=softswitch_onSend(ctxt, (void*)sendBuffer, currSendTodo, currSendAddressList, &isApp);
                        ctxt->currentSize = currSize; // update the current size in the thread context
@@ -300,21 +300,21 @@ extern "C" void softswitch_main()
                        // We still have more addresses to deliver the last message to
                        softswitch_softswitch_log(3, "forwarding current message");
                    }
-                   
+
                    if(currSendTodo>0){
                        assert(currSendAddressList);
-                       
+
                        softswitch_softswitch_log(3, "sending to thread %08x, device %u, pin %u", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->pin);
-                       
+
                        // Update the target address (including the device and pin)
     	               static_assert(sizeof(address_t)==8);
                        if(isApp) { // we are sending an application message there is no destination
-                          //*(uint64_t*)&((packet_t*)sendBuffer)->dest = tinselHostId(); 
+                          //*(uint64_t*)&((packet_t*)sendBuffer)->dest = tinselHostId();
                        } else { // we are sending a regular message
     	                 // This wierdness is to avoid the compiler turning it into a call to memcpy
                          *(uint64_t*)&((packet_t*)sendBuffer)->dest = *(uint64_t*)currSendAddressList;
                        }
-    
+
                        if(enableIntraThreadSend && currSendAddressList->thread==thisThreadId && adequateHostBufferSpace){
                            // Deliver on this thread without waiting
                            softswitch_onReceive(ctxt, (const void *)sendBuffer);  // Decode and dispatch
@@ -334,7 +334,7 @@ extern "C" void softswitch_main()
                              tinsel_mboxSend(currSendAddressList->thread, sendBuffer);
                            }
                        }
-    
+
                        if(!isApp) { // we are only sending to multiple addresses if it is not an application message
                          // Move onto next address for next time
                          currSendTodo--; // If this reaches zero, we are done with the message
@@ -344,34 +344,34 @@ extern "C" void softswitch_main()
               }
             } //doSend
 
-          
+
           #ifdef SINGLESTEPPING
-             
+
             // pass the token along to the next thread
-            assert(token); // ensure that we have the token of execution 
+            assert(token); // ensure that we have the token of execution
             //TODO: make this configurable so it's not limited to single board systems
             uint32_t nextThread;
             //if(thisThreadId < (1024-1))
             if(thisThreadId < (10-1))
-              nextThread = thisThreadId+1; 
+              nextThread = thisThreadId+1;
             else
               nextThread = 0;
-            
+
             softswitch_softswitch_log(3, "passing the token onto %x", nextThread);
 
             // wait until we can send
             tinselWaitUntil(TINSEL_CAN_SEND);
 
             // send the token on
-            tinselSetLen(3); // max size 
+            tinselSetLen(3); // max size
             packet_t* tokenMsg = (packet_t*)sendBuffer;
             tokenMsg->dest.thread = nextThread;
             tokenMsg->dest.device = 0;
-            tokenMsg->dest.pin = 0xFF; 
+            tokenMsg->dest.pin = 0xFF;
             tokenMsg->size = sizeof(packet_t);
             tinsel_mboxSend(nextThread, sendBuffer);
 
-            token = false; // token has been passed on 
+            token = false; // token has been passed on
             // wait until we can send
             tinselWaitUntil(TINSEL_CAN_SEND);
           #endif // SINGLESTEPPING

@@ -14,8 +14,8 @@
 #include "softswitch.hpp"
 
 // defines the Host Message Buffer size that is defined in softswitch_main
-#define HOSTBUFFER_SIZE 40 
-#define MAX_HOST_PER_HANDLER 2 
+#define HOSTBUFFER_SIZE 40
+#define MAX_HOST_PER_HANDLER 2
 
 /*
     Host Message Buffer functions
@@ -33,7 +33,7 @@ static PThreadContext *softswitch_getCtxt()
 //! returns the size of the buffer (i.e. number of pending host messages)
 extern "C" uint32_t hostMsgBufferSize();
 
-//! returns the space available in the buffer 
+//! returns the space available in the buffer
 extern "C" uint32_t hostMsgBufferSpace();
 
 //! Pushes a host message onto the buffer
@@ -42,10 +42,10 @@ extern "C" void hostMsgBufferPush(hostMsg *msg);
 //! slow hostlink - sends data up the hostlink instead of via PCIe messages
 // pops the data off the buffer and passes it up the UART, can be used in situations where the buffer is full
 // and we don't want to block
-extern "C" void hostMessageSlowPopSend(); 
+extern "C" void hostMessageSlowPopSend();
 
 //! pops and sends a message from the buffer
-extern "C" void hostMessageBufferPopSend(); 
+extern "C" void hostMessageBufferPopSend();
 
 //! directHostMessageSlowSend
 // bypasses the buffer and the main softswitch event loop and sends the hostmessage directly
@@ -70,7 +70,7 @@ void softswitch_handler_exit(int code);
 template<typename T = void>
 void log_peel_params(hostMsg *hmsg, uint32_t* cnt) {
     return;
-} 
+}
 
 // peel parameters
 // General case: peels the parameters off the argument list and appends them to the message
@@ -86,14 +86,14 @@ void log_peel_params(hostMsg *hmsg, uint32_t* cnt, const P1& p1, Param& ... para
 // (type information is stored in the unparameterised string at the host end)
 //template<typename T>
 //uint32_t to_raw_binary(const T& t){
-//  return *((uint32_t*)&t); 
+//  return *((uint32_t*)&t);
 //}
 //
 ////! unpeel_all_params: unpeels all the parameters of the log function call and stores them in a vector
 //template<typename ... Param>
 //std::vector<uint32_t> unpeel_all_params(const Param& ... param){
 //  return {to_raw_binary(param)...};
-//} 
+//}
 
 //! The log message call
 template<typename ... Param>
@@ -108,19 +108,19 @@ void softswitch_handler_log_impl(int level, const char *msg, const Param& ... pa
 
   const DeviceContext *deviceContext = ctxt->devices+ctxt->currentDevice;
 
-  // create a hostMsg 
+  // create a hostMsg
   hostMsg hmsg;
 
   //prepare the message
   hmsg.source.thread = tinselId();
-  hmsg.source.device = deviceContext->index; 
+  hmsg.source.device = deviceContext->index;
   hmsg.type = 0xF0; // magic number for STDOUT
 
-  // String address of the message 
+  // String address of the message
   hmsg.payload[0] = (unsigned)static_cast<const void*>(msg);
-  
+
   // current handler type TODO: this can be worked out by pts-serve using src addr
-  hmsg.payload[1] = ctxt->currentHandlerType; 
+  hmsg.payload[1] = ctxt->currentHandlerType;
   // pin name
   const char* pin;
   if(ctxt->currentHandlerType==1){
@@ -130,7 +130,7 @@ void softswitch_handler_log_impl(int level, const char *msg, const Param& ... pa
   }
   hmsg.payload[2] = (unsigned)static_cast<const void*>(pin); // send the str addr of the pin name
   hmsg.payload[3] = (unsigned)static_cast<const void*>(deviceContext->id); // send the str addr of the device name
-  // TODO: above could be done more efficiently if pts-serve looked this up instead of sending the message 
+  // TODO: above could be done more efficiently if pts-serve looked this up instead of sending the message
 
   // peel off the parameters from the variadic
   uint32_t param_cnt = 4;
@@ -140,12 +140,12 @@ void softswitch_handler_log_impl(int level, const char *msg, const Param& ... pa
   //std::vector<uint32_t> params = unpeel_all_params(param...);
   //assert(params.size() <= HOST_MSG_PAYLOAD);
   //for(uint32_t i=0; i<params.size(); i++) {
-  //  hmsg.payload[i] = params[i]; 
+  //  hmsg.payload[i] = params[i];
   //}
 
   // check to ensure that the hostMessage buffer has enough space (otherwise pop via UART)
   if(hostMsgBufferSpace() == 0) {
-    hostMessageSlowPopSend();   
+    hostMessageSlowPopSend();
   }
 
   // push the message onto the hostMsgBuffer
@@ -168,12 +168,12 @@ void softswitch_softswitch_log_impl(int level, const char *msg, const Param& ...
 
   const DeviceContext *deviceContext = ctxt->devices+ctxt->currentDevice;
 
-  // create a hostMsg 
+  // create a hostMsg
   hostMsg hmsg;
 
   //prepare the message
   hmsg.source.thread = tinselId();
-  hmsg.source.device = deviceContext->index; 
+  hmsg.source.device = deviceContext->index;
   hmsg.type = 0xF0; // magic number for STDOUT
   hmsg.payload[0] = (unsigned)static_cast<const void*>(msg);
 
@@ -185,7 +185,7 @@ void softswitch_softswitch_log_impl(int level, const char *msg, const Param& ...
   //std::vector<uint32_t> params = unpeel_all_params(param...);
   //assert(params.size() <= HOST_MSG_PAYLOAD);
   //for(uint32_t i=0; i<params.size(); i++) {
-  //  hmsg.payload[i] = params[i]; 
+  //  hmsg.payload[i] = params[i];
   //}
 
   // This does not go through the buffer as it could cause deadlock

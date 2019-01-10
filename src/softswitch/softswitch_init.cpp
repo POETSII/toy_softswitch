@@ -77,51 +77,18 @@ extern "C" void softswitch_init(PThreadContext *ctxt)
         DeviceContext *dev=ctxt->devices+i;
         const DeviceTypeVTable *vtable=dev->vtable;
 
-	/*
-	if(vtable->numInputs){
-	  tinsel_puts("softswitch_init - have input pins\n");
-	}else{
-	  tinsel_puts("softswitch_init - no input pins\n");
-	}
-	*/
+        softswitch_softswitch_log(3, "softswitch_init : calling init handler for %s.", dev->id);
 
-        // softswitch_softswitch_log(4, "softswitch_init : looking for init handler for %s.", dev->id);
-        // for(unsigned pi=0; pi<vtable->numInputs; pi++){
+        // Needed for handler logging
+        ctxt->currentDevice=i;
+        ctxt->currentHandlerType=4; // Identify this as init handler
+        //ctxt->currentPin=0;
 
-        //     const InputPinVTable *pin=vtable->inputPins+pi;
+        init_handler_t init = vtable->initHandler;
 
-        //     if(!strcmp(pin->name,"__init__")){
+        init(ctxt->graphProps, dev->properties, dev->state);
 
-           softswitch_softswitch_log(3, "softswitch_init : calling init handler for %s.", dev->id);
-
-           ctxt->currentDevice=i;
-
-           init_handler_t init = vtable->initHandler;
-
-           init(ctxt->graphProps, dev->properties, dev->state);
-
-        //         // Needed for handler logging
-        //         ctxt->currentDevice=i;
-        //         ctxt->currentHandlerType=1;
-        //         ctxt->currentPin=pi;
-
-        //         receive_handler_t handler=pin->receiveHandler;
-
-        //         handler(
-        //             ctxt->graphProps,
-        //             dev->properties,
-        //             dev->state,
-        //             nullptr, /*eProps*/
-        //             nullptr, /*eState*/
-        //             nullptr  /*message*/
-        //         );
-
-        //         ctxt->currentHandlerType=0;
-
-        //         softswitch_softswitch_log(3, "softswitch_init : finished init handler for %s.", dev->id);
-        //         break;
-        //     }
-        // }
+        //ctxt->currentHandlerType=0;
 
         softswitch_UpdateRTS(ctxt, dev);
     }
