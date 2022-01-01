@@ -55,7 +55,7 @@ void hostMessageBufferPopSend() {
   //tinselSetLen(HOSTMSG_FLIT_SIZE);
 
   // get the slot for sending host messages
-  volatile hostMsg* hmsg = (volatile hostMsg*)tinsel_mboxSlot(1);
+  volatile hostMsg* hmsg = (volatile hostMsg*)tinsel_mboxSendSlotExtra();
   hmsg->type = buff[ctxt->hbuf_head].type;
   hmsg->source.thread = buff[ctxt->hbuf_head].source.thread;
   for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {

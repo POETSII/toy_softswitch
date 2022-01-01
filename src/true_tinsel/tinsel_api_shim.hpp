@@ -36,10 +36,23 @@ POETS_ALWAYS_INLINE void tinsel_flush()
     tinselCacheFlush();
 }
 
+/*
 // Get pointer to nth message-aligned slot in mailbox scratchpad
 POETS_ALWAYS_INLINE volatile void* tinsel_mboxSlot(uint32_t n)
 {
     return tinselSlot(n);
+}
+*/
+
+// Get pointer to thread's message slot reserved for sending
+POETS_ALWAYS_INLINE volatile void* tinsel_mboxSendSlot()
+{
+    return tinselSendSlot();
+}
+
+POETS_ALWAYS_INLINE volatile void* tinsel_mboxSendSlotExtra()
+{
+    return tinselSendSlotExtra();
 }
 
 // Determine if calling thread can send a message
@@ -69,10 +82,18 @@ POETS_ALWAYS_INLINE void tinsel_mboxSend(uint32_t dest, volatile void* addr)
     tinselSend(dest,addr);
 }
 
+/*
 // Give mailbox permission to use given address to store an incoming message
 POETS_ALWAYS_INLINE void tinsel_mboxAlloc(volatile void* addr)
 {
     tinselAlloc(addr);
+}
+*/
+
+// Indicate that we've finished with the given message.
+POETS_ALWAYS_INLINE void tinsel_mboxFree(volatile void* addr)
+{
+    tinselFree(addr);
 }
 
 // Determine if calling thread can receive a message
@@ -93,11 +114,13 @@ POETS_ALWAYS_INLINE void tinsel_mboxWaitUntil(tinsel_WakeupCond cond)
     tinselWaitUntil((TinselWakeupCond)cond);
 }
 
+/*
 // Get the number of slots. Should this come from config.h?
 POETS_ALWAYS_INLINE unsigned tinsel_mboxSlotCount()
 {
     return 1<<TinselLogMsgsPerThread;
 }
+*/
 
 inline void tinsel_hostPut(uint32_t x);
 

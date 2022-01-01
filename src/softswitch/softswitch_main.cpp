@@ -87,8 +87,7 @@ extern "C" void softswitch_main()
     softswitch_init(ctxt);
 
     // We'll hold onto this one
-    volatile void *sendBuffer=tinsel_mboxSlot(0);
-    // Slot 1 we will keep for host messages
+    volatile void *sendBuffer=tinsel_mboxSendSlot();
 
 
     // If a send is in progress, this will be non-null
@@ -96,13 +95,6 @@ extern "C" void softswitch_main()
     uint32_t currSendTodo=0;
     uint32_t currSize=0;
     uint8_t isApp=0; // is 1 if we are sending on an application pin
-
-    // Assumption: all buffers are owned by software, so we have to give them to mailbox
-    // We only keep hold of slot 0 and [ tinsel_mboxSlotCount() - HOSTBUFFER_CNT, tinsel_mboxSlotCount()](for host comms)
-    softswitch_softswitch_log(2, "Giving %d receive buffers to mailbox", tinsel_mboxSlotCount()-2);
-    for(unsigned i=2; i<tinsel_mboxSlotCount(); i++){
-        tinsel_mboxAlloc( tinsel_mboxSlot(i) );
-    }
 
     softswitch_softswitch_log(1, "starting loop");
 
@@ -159,7 +151,7 @@ extern "C" void softswitch_main()
                 start_perfmon = true;
                 #endif
                 break;
-	    }
+	        }
         }
 
          #ifdef SINGLESTEPPING
@@ -178,7 +170,7 @@ extern "C" void softswitch_main()
                   num_outstanding_recvs++;
                 } else {
                   token = true;
-                  tinsel_mboxAlloc(recvBuffer); // Put it back in receive pool
+                  tinsel_mboxFree(recvBuffer); // Put it back in receive pool
                 }
              }
         }
@@ -272,7 +264,7 @@ extern "C" void softswitch_main()
              softswitch_onReceive(ctxt, (const void *)recvBuffer);  // Decode and dispatch
 
              softswitch_softswitch_log(4, "giving buffer back");
-             tinsel_mboxAlloc(recvBuffer); // Put it back in receive pool
+             tinsel_mboxFree(recvBuffer); // Put it back in receive pool
 
          }
          if(doSend){
