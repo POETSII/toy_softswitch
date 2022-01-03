@@ -69,6 +69,15 @@ void softswitch_handler_exit(int code);
 // zeroth case: returns
 template<typename T = void>
 void log_peel_params(hostMsg *hmsg, uint32_t* cnt) {
+    // check to ensure that the hostMessage buffer has enough space (otherwise pop via UART)
+    if(hostMsgBufferSpace() == 0) {
+      hostMessageSlowPopSend();
+    }
+
+    // push the message onto the hostMsgBuffer
+    //hostMsgBufferPush(hmsg);
+    directHostMessageSlowSend(hmsg);
+
     return;
 }
 
@@ -97,7 +106,7 @@ void log_peel_params(hostMsg *hmsg, uint32_t* cnt, const P1& p1, Param& ... para
 
 //! The log message call
 template<typename ... Param>
-void softswitch_handler_log_impl(int level, const char *msg, const Param& ... param){
+void softswitch_handler_log_impl(int level, uint32_t pc, const char *msg, const Param& ... param){
 
   PThreadContext *ctxt=softswitch_getCtxt();
   assert(ctxt->currentHandlerType!=0); // can't call handler log when not in a handler
@@ -120,7 +129,7 @@ void softswitch_handler_log_impl(int level, const char *msg, const Param& ... pa
   hmsg.payload[0] = (unsigned)static_cast<const void*>(msg);
 
   // current handler type TODO: this can be worked out by pts-serve using src addr
-  hmsg.payload[1] = ctxt->currentHandlerType;
+  hmsg.payload[1] = (pc << 8) | ctxt->currentHandlerType;
   // pin name
   const char* pin;
   if(ctxt->currentHandlerType==1){
@@ -137,29 +146,32 @@ void softswitch_handler_log_impl(int level, const char *msg, const Param& ... pa
   log_peel_params(&hmsg, &param_cnt, param...);
   assert(param_cnt <= HOST_MSG_PAYLOAD);
 
-  //std::vector<uint32_t> params = unpeel_all_params(param...);
-  //assert(params.size() <= HOST_MSG_PAYLOAD);
-  //for(uint32_t i=0; i<params.size(); i++) {
-  //  hmsg.payload[i] = params[i];
-  //}
-
-  // check to ensure that the hostMessage buffer has enough space (otherwise pop via UART)
-  if(hostMsgBufferSpace() == 0) {
-    hostMessageSlowPopSend();
-  }
-
-  // push the message onto the hostMsgBuffer
-  hostMsgBufferPush(&hmsg);
-
   return;
 }
 
 #ifndef POETS_DISABLE_LOGGING
 
+template<typename T = void>
+void log_peel_params_ss(hostMsg *hmsg, uint32_t* cnt) {
+    directHostMessageSlowSend(hmsg);
+
+    return;
+}
+
+// peel parameters
+// General case: peels the parameters off the argument list and appends them to the message
+template<typename P1, typename ... Param>
+void log_peel_params_ss(hostMsg *hmsg, uint32_t* cnt, const P1& p1, Param& ... param){
+    hmsg->payload[*cnt] = *((uint32_t*)&p1); //prune type and place it in hostMsg parameters
+    *cnt = *cnt + 1;
+    log_peel_params_ss(hmsg, cnt, param ...); //keep peeling
+    return;
+}
+
 //! The softswith log messaging (this is for debugging, it uses the slower UART channel as otherwise a deadlock might occur)
 // extern "C" void softswitch_softswitch_log_impl(int level, const char *msg, ...)
 template<typename ... Param>
-void softswitch_softswitch_log_impl(int level, const char *msg, const Param& ... param){
+void softswitch_softswitch_log_impl(int level, uint32_t pc, const char *msg, const Param& ... param){
 
   PThreadContext *ctxt=softswitch_getCtxt();
 
@@ -173,24 +185,17 @@ void softswitch_softswitch_log_impl(int level, const char *msg, const Param& ...
 
   //prepare the message
   hmsg.source.thread = tinselId();
-  hmsg.source.device = deviceContext->index;
+  hmsg.source.device = 0xFFFF;
   hmsg.type = 0xF0; // magic number for STDOUT
   hmsg.payload[0] = (unsigned)static_cast<const void*>(msg);
+  hmsg.payload[1]=(pc<<8);
+  hmsg.payload[2]=0;
+  hmsg.payload[3]=0;
 
   // peel off the parameters from the variadic
-  uint32_t param_cnt = 1;
-  log_peel_params(&hmsg, &param_cnt, param...);
+  uint32_t param_cnt = 4;
+  log_peel_params_ss(&hmsg, &param_cnt, param...);
   assert(param_cnt <= HOST_MSG_PAYLOAD);
-
-  //std::vector<uint32_t> params = unpeel_all_params(param...);
-  //assert(params.size() <= HOST_MSG_PAYLOAD);
-  //for(uint32_t i=0; i<params.size(); i++) {
-  //  hmsg.payload[i] = params[i];
-  //}
-
-  // This does not go through the buffer as it could cause deadlock
-  directHostMessageSlowSend(&hmsg);
-
   return;
 }
 #endif /* POETS_DISABLE_LOGGING */

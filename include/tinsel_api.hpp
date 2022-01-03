@@ -48,6 +48,8 @@ inline volatile void* tinsel_mboxRecv();
 // Suspend thread until wakeup condition satisfied
 inline void tinsel_mboxWaitUntil(tinsel_WakeupCond cond);
 
+inline int tinsel_mboxIdle(bool vote);
+
 // Get the number of slots. Should this come from config.h?
 inline unsigned tinsel_mboxSlotCount();
 
@@ -57,5 +59,22 @@ extern "C" void tinsel_puts(const char *msg);
 extern "C" void softswitch_main();
 
 
+extern "C" void tinsel_memcpy32 ( uint32_t *destination, const uint32_t *source, uint32_t num_words );
+
+template<class TA, class TB>
+void tinsel_memcpy_T(TA *dst, const TB *src)
+{
+    static_assert(sizeof(TA)==sizeof(TB));
+    static_assert((sizeof(TA)%4)==0);
+    if(sizeof(TA)<=12){
+        uint32_t *dst32=(uint32_t*)dst;
+        const uint32_t *src32=(const uint32_t *)src;
+        for(unsigned i=0; i<sizeof(TA)/4; i++){
+            dst32[i]=src32[i];
+        }
+    }else{
+        tinsel_memcpy32((uint32_t*)dst, (const uint32_t*)src, sizeof(TA)/4);
+    }
+}
 
 #endif

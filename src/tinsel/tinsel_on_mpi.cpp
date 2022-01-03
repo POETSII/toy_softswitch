@@ -88,7 +88,7 @@ void mbox_thread(uint32_t threadId, int hardLogLevel)
     std::thread incoming([&](){
         try{        
             if(hardLogLevel >= 1){
-                fprintf(stderr, "[%08x] HARD / in : Starting thread\n", threadId);     
+                fprintf(stderr, "[%u] HARD / in : Starting thread\n", threadId);     
             }
             
             unsigned bufferLen=mbox_t::WordsPerMsg*4;
@@ -109,19 +109,19 @@ void mbox_thread(uint32_t threadId, int hardLogLevel)
                 uint32_t srcThreadId;
                 srcThreadId=((packet_t*)buffer)->source.thread;
                 if(hardLogLevel >= 2){
-                    fprintf(stderr, "[%08x] HARD / in : Received message of length %u from rank '%u' (srcThread=0x%x)\n", threadId, len, status.MPI_SOURCE, srcThreadId);     
+                    fprintf(stderr, "[%u] HARD / in : Received message of length %u from rank '%u' (srcThread=0x%x)\n", threadId, len, status.MPI_SOURCE, srcThreadId);     
                 }
                 assert((int)srcThreadId == status.MPI_SOURCE);
                
                 uint32_t dstThreadId=((packet_t*)buffer)->dest.thread;
 
                 if(hardLogLevel >=2 ){
-                    fprintf(stderr, "[%08x] HARD / in : delivering message of length %u from thread 0x%08x to thread 0x%08x\n", threadId, len, srcThreadId, dstThreadId);                 
+                    fprintf(stderr, "[%u] HARD / in : delivering message of length %u from thread 0x%x to thread 0x%x\n", threadId, len, srcThreadId, dstThreadId);                 
                 }
                 mboxLocal->netPushMessage(dstThreadId, len, buffer);
             }           
         }catch(std::exception &e){
-            fprintf(stderr, "[%08x] HARD / in : Exception : %s\n", threadId, e.what());
+            fprintf(stderr, "[%u] HARD / in : Exception : %s\n", threadId, e.what());
             exit(1);
         }
     });
@@ -130,7 +130,7 @@ void mbox_thread(uint32_t threadId, int hardLogLevel)
     std::thread outgoing([&](){
         try{
             if(hardLogLevel >=1){
-                fprintf(stderr, "[%08x] HARD / out : Starting outgoing thread\n", threadId);     
+                fprintf(stderr, "[%u] HARD / out : Starting outgoing thread\n", threadId);     
             }
             
             unsigned bufferLen=mbox_t::WordsPerMsg*4;
@@ -141,14 +141,14 @@ void mbox_thread(uint32_t threadId, int hardLogLevel)
                 uint32_t byteLength;
                 
                 if(hardLogLevel >= 2){
-                    fprintf(stderr, "[%08x] HARD / out : Waiting to pull message from mailbox\n", threadId);     
+                    fprintf(stderr, "[%u] HARD / out : Waiting to pull message from mailbox\n", threadId);     
                 }
                 mboxLocal->netPullMessage(dstThreadId, byteLength, buffer);
                 
                 assert(byteLength <= 4*mbox_t::WordsPerMsg);
                 
                 if(hardLogLevel >= 2){
-                    fprintf(stderr, "[%08x] HARD / out :  Pulled message to %08x of length %u\n", threadId, dstThreadId, byteLength);     
+                    fprintf(stderr, "[%u] HARD / out :  Pulled message to %x of length %u\n", threadId, dstThreadId, byteLength);     
                 }
                 
                 
@@ -157,18 +157,18 @@ void mbox_thread(uint32_t threadId, int hardLogLevel)
                 }
                 
                 if(hardLogLevel >= 2){
-                    fprintf(stderr, "[%08x] HARD / out : Send message to %08x\n", threadId, dstThreadId);     
+                    fprintf(stderr, "[%u] HARD / out : Send message to %x\n", threadId, dstThreadId);     
                 }
 
             }
         }catch(std::exception &e){
-            fprintf(stderr, "[%08x] HARD / out : Exception : %s\n", threadId, e.what());
+            fprintf(stderr, "[%u] HARD / out : Exception : %s\n", threadId, e.what());
             exit(1);
         }
     });
    
     if(hardLogLevel >= 1){
-        fprintf(stderr, "[%08x] HARD : Starting soft-switch\n", threadId);     
+        fprintf(stderr, "[%u] HARD : Starting soft-switch\n", threadId);     
     }
     softswitch_main();
 

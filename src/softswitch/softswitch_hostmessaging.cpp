@@ -14,6 +14,15 @@ uint32_t hostMsgBufferSize() {
   }
 }
 
+extern "C" uint32_t tinsel_get_program_counter();
+asm                                                                              
+(                                                                                
+".global tinsel_get_program_counter\n\t"
+"tinsel_get_program_counter:\n\t"
+"  mv a0, ra\n\t"
+"  jr ra\n\t"
+);
+
 //! returns the space available in the buffer 
 uint32_t hostMsgBufferSpace() {
   return HOSTBUFFER_SIZE - hostMsgBufferSize();
@@ -24,12 +33,7 @@ void hostMsgBufferPush(hostMsg *msg) {
   PThreadContext *ctxt=softswitch_getCtxt();
 
   volatile hostMsg *buff = ctxt->hostBuffer;
-  // stupidness to avoid memcpy TODO:fix
-  buff[ctxt->hbuf_tail].type = msg->type;
-  buff[ctxt->hbuf_tail].source.thread = msg->source.thread;
-  for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {
-    buff[ctxt->hbuf_tail].payload[i] = msg->payload[i];
-  }
+  tinsel_memcpy_T((hostMsg*)(buff+ctxt->hbuf_tail), msg);
 
   // increment the tail
   ctxt->hbuf_tail = ctxt->hbuf_tail + 1;
@@ -56,11 +60,7 @@ void hostMessageBufferPopSend() {
 
   // get the slot for sending host messages
   volatile hostMsg* hmsg = (volatile hostMsg*)tinsel_mboxSendSlotExtra();
-  hmsg->type = buff[ctxt->hbuf_head].type;
-  hmsg->source.thread = buff[ctxt->hbuf_head].source.thread;
-  for(unsigned i=0; i<HOST_MSG_PAYLOAD; i++) {
-    hmsg->payload[i] = buff[ctxt->hbuf_head].payload[i];
-  }
+  tinsel_memcpy_T((hostMsg*)hmsg, (hostMsg*)(buff+ctxt->hbuf_head));
 
   // increment the head
   ctxt->hbuf_head = ctxt->hbuf_head + 1;
@@ -81,6 +81,14 @@ void tinsel_UARTPut(uint8_t x) {
   return;
 }
 
+void tinsel_UARTPutLengthPrefixedBytes(const uint8_t *bytes, uint8_t num) {
+  while(!tinselUartTryPut(num));
+  for(uint8_t i=0; i<num; i++){
+    uint8_t byte=bytes[i];
+    while(!tinselUartTryPut(byte));
+  }
+}
+
 //! slow hostlink - sends data up the hostlink instead of via PCIe messages
 // pops the data off the buffer and passes it up the UART, can be used in situations where the buffer is full
 // to avoid deadlocking the system
@@ -88,31 +96,18 @@ void tinsel_UARTPut(uint8_t x) {
 // hostmessage is taking the maximum size of 4 flits.
 void hostMessageSlowPopSend() {
   // Protocol for sending host messages over this channel
-  // 16-bits of ID (hi) and 8-bits of payload (lo)
 
   // setup the context and prefix id for sending down UART
-  uint32_t prefix=tinselId()<<8; 
   PThreadContext *ctxt=softswitch_getCtxt();
-  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
  
   // get the host buffer
   volatile hostMsg *buff = ctxt->hostBuffer;
   
   // get the hostMsg at the head
-  volatile hostMsg *hmsg = &buff[ctxt->hbuf_head];
-  
-  // sending the message type 
-  tinsel_UARTPut(prefix | ((hmsg->type>>0)&0xFF) ); //LSBs
-  tinsel_UARTPut(prefix | ((hmsg->type>>8)&0xFF) ); //MSBs
+  volatile hostMsg *hmsg = buff+ctxt->hbuf_head;
 
-  // sending each element of the hostMsg payload
-  for(uint32_t i=0; i<HOST_MSG_PAYLOAD; i++) {
-    tinsel_UARTPut(prefix | ((hmsg->payload[i]>>0)&0xFF)); //LSBs
-    tinsel_UARTPut(prefix | ((hmsg->payload[i]>>8)&0xFF)); 
-    tinsel_UARTPut(prefix | ((hmsg->payload[i]>>16)&0xFF)); 
-    tinsel_UARTPut(prefix | ((hmsg->payload[i]>>24)&0xFF)); //MSBs
-  }
-  
+  tinsel_UARTPutLengthPrefixedBytes((const uint8_t*)hmsg, sizeof(hostMsg));
+
   // increment the buffer head to pop the message
   ctxt->hbuf_head = ctxt->hbuf_head + 1;
   if(ctxt->hbuf_head == HOSTBUFFER_SIZE) {
@@ -129,21 +124,9 @@ void hostMessageSlowPopSend() {
 void directHostMessageSlowSend(hostMsg *msg) {
 
   // setup the context and prefix id for sending down UART
-  uint32_t prefix=tinselId()<<8; 
   PThreadContext *ctxt=softswitch_getCtxt();
-  const DeviceContext *dev=ctxt->devices+ctxt->currentDevice;
- 
-  // sending the message type 
-  tinsel_UARTPut(prefix | ((msg->type>>0)&0xFF) ); //LSBs
-  tinsel_UARTPut(prefix | ((msg->type>>8)&0xFF) ); //MSBs
 
-  // sending each element of the hostMsg payload
-  for(uint32_t i=0; i<HOST_MSG_PAYLOAD; i++) {
-    tinsel_UARTPut(prefix | ((msg->payload[i]>>0)&0xFF)); //LSBs
-    tinsel_UARTPut(prefix | ((msg->payload[i]>>8)&0xFF)); 
-    tinsel_UARTPut(prefix | ((msg->payload[i]>>16)&0xFF)); 
-    tinsel_UARTPut(prefix | ((msg->payload[i]>>24)&0xFF)); //MSBs
-  }
+  tinsel_UARTPutLengthPrefixedBytes((const uint8_t*)msg, sizeof(hostMsg));
   
   return;
 }
@@ -224,6 +207,7 @@ extern "C" void __assert_func (const char *file, int line, const char *assertFun
 {
   hostMsg msg;
   msg.source.thread = tinselId(); // Id of this thread 
+  msg.source.device=0;
   msg.type = 0xFE; // magic number for assert with no info
   msg.payload[0] = (unsigned)static_cast<const void*>(file); //address of the file where the assert occurred
   msg.payload[1] = line; // line number for where the assert occurred 

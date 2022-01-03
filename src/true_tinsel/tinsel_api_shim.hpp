@@ -66,7 +66,7 @@ POETS_ALWAYS_INLINE uint32_t tinsel_mboxCanSend()
 POETS_ALWAYS_INLINE void tinsel_mboxSetLen(uint32_t n)
 {
 
-  assert(n <= (TinselWordsPerFlit * 4 * 4)); // 4 flits per message max, 4 bytes per word
+  //assert(n <= (TinselWordsPerFlit * 4 * 4)); // 4 flits per message max, 4 bytes per word
   uint32_t flitCnt = (n-1) >> TinselLogBytesPerFlit;
   if(flitCnt < 0) {
     flitCnt = 0;
@@ -112,6 +112,11 @@ POETS_ALWAYS_INLINE volatile void* tinsel_mboxRecv()
 POETS_ALWAYS_INLINE void tinsel_mboxWaitUntil(tinsel_WakeupCond cond)
 {
     tinselWaitUntil((TinselWakeupCond)cond);
+}
+
+POETS_ALWAYS_INLINE int tinsel_mboxIdle(bool vote)
+{
+    return tinselIdle(vote);
 }
 
 /*

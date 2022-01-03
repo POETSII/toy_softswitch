@@ -62,7 +62,7 @@ extern "C" void perfmon_flush_counters(PThreadContext *ctxt)
     uint32_t recv_handler_cycles = ctxt->recv_handler_cycles; 
 
                                     // tid, total, blocked, idle, perfmon, send, sendhand, recv, recvhand
-    append_profile_printf(left, dst, "[%08x], %u, %u, %u, %u, %u, %u, %u, %u, %u\n", tinsel_myId(), thread_cycles, send_blocked_cycles, recv_blocked_cycles, idle_cycles, perfmon_cycles, send_cycles, send_handler_cycles, recv_cycles, recv_handler_cycles); 
+    append_profile_printf(left, dst, "[%u], %u, %u, %u, %u, %u, %u, %u, %u, %u\n", tinsel_myId(), thread_cycles, send_blocked_cycles, recv_blocked_cycles, idle_cycles, perfmon_cycles, send_cycles, send_handler_cycles, recv_cycles, recv_handler_cycles); 
 
     tinsel_puts(buffer);
     

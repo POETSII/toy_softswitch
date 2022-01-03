@@ -13,7 +13,8 @@ extern "C" bool softswitch_onIdle(PThreadContext *ctxt)
     // between checking if we can send/recv
     const unsigned IDLE_SWEEP_CHUNK_SIZE = 32;
 
-    for(unsigned i=0; i<IDLE_SWEEP_CHUNK_SIZE;i++){
+    unsigned i;
+    for(i=0; i<IDLE_SWEEP_CHUNK_SIZE;i++){
         dev=ctxt->devices + ctxt->rtcOffset;
 
         ctxt->rtcOffset++;
@@ -27,7 +28,7 @@ extern "C" bool softswitch_onIdle(PThreadContext *ctxt)
         }
     }
 
-    if(dev){
+    if(i==IDLE_SWEEP_CHUNK_SIZE){
         return true; // Didn't find one this time, but there might still be one
     }
 
@@ -39,6 +40,7 @@ extern "C" bool softswitch_onIdle(PThreadContext *ctxt)
         dev->state
     );
 
+    assert( ((dev->rtsFlags&0x7FFFFFFFul)!=0) == rts_is_on_list(ctxt, dev));
     softswitch_UpdateRTS(ctxt, dev);
 
     return true;

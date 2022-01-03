@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <cstddef>
 
 #include "hostMsg.hpp"
 
@@ -25,14 +26,14 @@ extern "C"{
 
 // A packet. This probably mixes hardware and
 // software routing.
-#pragma pack(push,1)
+/*#pragma pack(push,1)
 typedef struct _packet_t
 {
   address_t dest;
   address_t source;
-  uint32_t size;  // total size, including header
 }packet_t;
 #pragma pack(pop)
+*/
 
 typedef void (*init_handler_t)(
     const void *graphProps,
@@ -63,6 +64,12 @@ typedef void (*receive_handler_t)(
 );
 
 typedef void (*compute_handler_t)(
+    const void *graphProps,
+    const void *devProps,
+    void *devState
+);
+
+typedef void (*on_hardware_idle_handler_t)(
     const void *graphProps,
     const void *devProps,
     void *devState
@@ -100,6 +107,7 @@ typedef struct _DeviceTypeVTable
     const InputPinVTable *inputPins;
     compute_handler_t computeHandler;
     const char *id; // Unique id of the device type
+    on_hardware_idle_handler_t onHardwareIdleHandler;
 }DeviceTypeVTable;
 
 // Gives the distribution list when sending from a particular pin
@@ -143,14 +151,15 @@ typedef struct _DeviceContext
     const char *id;              // unique id of the device
 
     uint32_t rtsFlags;
-    uint32_t rtc;
 
     struct _DeviceContext *prev;
     struct _DeviceContext *next;
 
     uint32_t isExternal; // if 1 this is an external device type, otherwise 0 and is a standard device type
 
-    uint32_t pad[4]; // padding to ensure cache line is not shared
+    uint32_t pad[16]; // padding to ensure cache line is not shared
+
+    uint32_t checksum;
 }DeviceContext;
 
 /*! Contains information about what this thread is managing.
@@ -189,7 +198,7 @@ typedef struct _PThreadContext
 
     // This is used by the softswitch to track which device (if any) is active, so that we know during things like handler_log
     uint32_t currentDevice;
-    int currentHandlerType;   // 0 = None, 1 = Recv, 2 = Send
+    int currentHandlerType;   // 0 = None, 1 = Recv, 2 = Send, 4=Init, 5=HardwareIdle 
     uint32_t currentPin; // Index of the pin (for recv and send)
     uint32_t currentSize; // The current message size (in bytes)
 
@@ -236,6 +245,17 @@ DeviceContext *softswitch_PopRTS(PThreadContext *pCtxt);
 
 bool softswitch_IsRTSReady(PThreadContext *pCtxt);
 
+bool rts_is_on_list(PThreadContext *ctxt, DeviceContext *dctxt);
+
+inline uint32_t hash_struct_impl(uint32_t n, const void *p)
+{
+    uint32_t acc=12345678;
+    const uint8_t *tmp=(const uint8_t *)p;
+    for(uint32_t i=0; i<n; i++){
+        acc += (acc>>16) + tmp[i];
+    }
+    return acc;
+}
 
 #ifndef POETS_MAX_LOGGING_LEVEL
 #define POETS_MAX_LOGGING_LEVEL 10
@@ -247,10 +267,12 @@ bool softswitch_IsRTSReady(PThreadContext *pCtxt);
 #define POETS_MAX_SOFTSWITCH_LOGGING_LEVEL 10
 #endif
 
+extern "C" uint32_t tinsel_get_program_counter();
+
 //! Allows logging from within the softswitch
 #ifndef POETS_DISABLE_LOGGING
 #define softswitch_softswitch_log(level, ...) \
-  if(level <= POETS_MAX_LOGGING_LEVEL && level <= POETS_MAX_SOFTSWITCH_LOGGING_LEVEL){ softswitch_softswitch_log_impl(level, __VA_ARGS__); }
+  if(level <= POETS_MAX_LOGGING_LEVEL && level <= POETS_MAX_SOFTSWITCH_LOGGING_LEVEL){ softswitch_softswitch_log_impl(level, tinsel_get_program_counter(), __VA_ARGS__); }
 #else
 #define softswitch_softswitch_log(level, ...) \
     ((void)0)
@@ -259,7 +281,7 @@ bool softswitch_IsRTSReady(PThreadContext *pCtxt);
 //! Allows logging from within a device handler
 #ifndef POETS_DISABLE_LOGGING
 #define softswitch_handler_log(level, ...) \
-  if(level <= POETS_MAX_LOGGING_LEVEL && level <= POETS_MAX_HANDLER_LOGGING_LEVEL){ softswitch_handler_log_impl(level, __VA_ARGS__); }
+  if(level <= POETS_MAX_LOGGING_LEVEL && level <= POETS_MAX_HANDLER_LOGGING_LEVEL){ softswitch_handler_log_impl(level, tinsel_get_program_counter(), __VA_ARGS__); }
 #else
 #define softswitch_handler_log(level, ...) \
     ((void)0)
@@ -271,6 +293,10 @@ void softswitch_handler_exit(int code);
 //! Used to flush the performance counters
 #ifdef SOFTSWITCH_ENABLE_PROFILE
 void softswitch_flush_perfmon();
+#endif
+
+#ifndef SOFTSWITCH_ENABLE_HARDWARE_IDLE
+#define SOFTSWITCH_ENABLE_HARDWARE_IDLE 1
 #endif
 
 // Send a key-value pair back to the host.
@@ -301,5 +327,19 @@ void softswitch_main();
 #ifdef __cplusplus
 };
 #endif
+
+template<class T>
+inline void hash_struct_init(T *p)
+{
+    static_assert(offsetof(T,checksum)==sizeof(T)-4);
+    p->checksum=hash_struct_impl(sizeof(T)-4, p);
+}
+
+template<class T>
+inline void hash_struct_check(T *p)
+{
+    static_assert(offsetof(T,checksum)==sizeof(T)-4);
+    assert(p->checksum==hash_struct_impl(sizeof(T)-4, p));
+}
 
 #endif

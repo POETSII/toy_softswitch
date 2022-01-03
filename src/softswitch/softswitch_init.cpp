@@ -21,6 +21,10 @@ void zeroProfileCounters(PThreadContext *ctxt)
 }
 #endif
 
+bool rts_is_on_list(PThreadContext *pCtxt, DeviceContext *dCtxt);
+
+void rts_append(PThreadContext *pCtxt, DeviceContext *dCtxt);
+
 extern "C" void softswitch_init(PThreadContext *ctxt)
 {
     softswitch_softswitch_log(2, "softswitch_init : begin");
@@ -88,10 +92,16 @@ extern "C" void softswitch_init(PThreadContext *ctxt)
 
         init(ctxt->graphProps, dev->properties, dev->state);
 
-        //ctxt->currentHandlerType=0;
-
-        softswitch_UpdateRTS(ctxt, dev);
+        uint32_t flags = dev->vtable->readyToSendHandler(
+            ctxt->graphProps,
+            dev->properties,
+            dev->state
+        );
+        dev->rtsFlags=flags;
+        if(flags&0x7FFFFFFFul){
+          rts_append(ctxt, dev);
+        }
     }
 
-    softswitch_softswitch_log(3, "softswitch_init : end.");
+    softswitch_softswitch_log(2, "softswitch_init : end.");
 }

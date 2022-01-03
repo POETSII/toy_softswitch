@@ -20,19 +20,18 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
     uint32_t tstart = tinsel_CycleCount();
     #endif
 
-    const packet_t *packet=(const packet_t*)message;
+    const packet_header_t *packet=(const packet_header_t*)message;
     const void *payload=(const char*)(packet+1);
 
     assert(packet); // Anything arriving via this route must have been a real packet (no init message via this route)
 
     softswitch_softswitch_log(3, "softswitch_onReceive: pin=%x\n", packet->dest.pin);
 
-    softswitch_softswitch_log(4, "softswitch_onReceive /  dst=%08x:%04x:%02x, src=%08x:%04x:%02x, size=%x", packet->dest.thread, packet->dest.device, packet->dest.pin, packet->source.thread, packet->source.device, packet->source.pin, packet->size);
+    softswitch_softswitch_log(4, "softswitch_onReceive /  dst=%x:%x:%x, src=%x:%x:%x, size=%x", packet->dest.thread, packet->dest.device, packet->dest.pin, packet->source.thread, packet->source.device, packet->source.pin, packet->source.size);
 
-    assert( packet->size >= sizeof(packet_t) );
-    softswitch_softswitch_log(5, "softswitch_onReceive /  packet->size=%x, sizeof(packet_t)=%x", packet->size, sizeof(packet_t));
+    assert( packet->source.size >= sizeof(packet_header_t) );
 
-    int payloadSize = packet->size - (int)sizeof(packet_t);
+    int payloadSize = packet->source.size - (int)sizeof(packet_header_t);
     assert(payloadSize>=0);
     for(int i=0; i< payloadSize; i++){
       softswitch_softswitch_log(5, "softswitch_onReceive /   payload[%u]=%x", i, ((uint8_t*)payload)[i]);
@@ -58,6 +57,9 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
            // we need to immediately forward this message to the host
            // use the hostmessaging infrastructure
            // I don't think this manual copy is required I can probably just cast it into a hostMsg
+
+            assert(0); // dt10 - this is just wrong. fwdMsg points at nothing
+           #if 0
            hostMsg *fwdMsg;
            fwdMsg->source.thread = packet->source.thread;
            fwdMsg->source.device = packet->source.device;
@@ -68,6 +70,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
               fwdMsg->payload[i] = packet_payload[i];
            }
            hostMsgBufferPush(fwdMsg); // Push a copy onto the hostMessage buffer
+           #endif
     } else {
         // Map to the particular pin
         unsigned pinIndex=packet->dest.pin;
@@ -82,7 +85,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
         if(pin->propertiesSize | pin->stateSize){
             // We have to look up the edge info associated with this edge
 
-            softswitch_softswitch_log(4, "softswitch_onReceive / finding edge info, src=%08x:%04x:%02x, propSize=%u, stateSize=%u", packet->source.thread, packet->source.device, packet->source.pin, pin->propertiesSize , pin->stateSize);
+            softswitch_softswitch_log(4, "softswitch_onReceive / finding edge info, src=%x:%x:%x, propSize=%u, stateSize=%u", packet->source.thread, packet->source.device, packet->source.pin, pin->propertiesSize , pin->stateSize);
 
 
             const InputPinBinding *begin=dev->sources[pinIndex].sourceBindings;
@@ -101,10 +104,11 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
                 return cmpAddress(a.source,b);
             });
             if(edge==end || edge->source.thread != packet->source.thread || edge->source.device != packet->source.device || edge->source.pin != packet->source.pin){
-                softswitch_softswitch_log(0, "softswitch_onReceive / no edge found for packet : dst=%08x:%04x:%02x=%s, src=%08x:%04x:%02x", packet->dest.thread, packet->dest.device, packet->dest.pin, dev->id, packet->source.thread, packet->source.device, packet->source.pin);
+                #ifndef NDEBUG
+                softswitch_softswitch_log(1, "softswitch_onReceive / no edge found for packet : dst=%x:%x:%x=%s, src=%x:%x:%x", packet->dest.thread, packet->dest.device, packet->dest.pin, dev->id, packet->source.thread, packet->source.device, packet->source.pin);
                 auto tmp=begin;
                 while(tmp!=end){
-                    softswitch_softswitch_log(0, "softswitch_onReceive / possible src=%08x:%04x:%02x", tmp->source.thread, tmp->source.device, tmp->source.pin);
+                    softswitch_softswitch_log(1, "softswitch_onReceive / possible src=%x:%x:%x", tmp->source.thread, tmp->source.device, tmp->source.pin);
             	if(begin+1 != tmp){
             	  assert(cmpAddress((tmp-1)->source, tmp->source));
             	}
@@ -117,10 +121,11 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
 
 
                 assert(0);
+                #endif
             }
 
 
-            softswitch_softswitch_log(4, "softswitch_onReceive / found edge, src=%08x:%04x:%02x=%u", edge->source.thread, edge->source.device, edge->source.pin);
+            softswitch_softswitch_log(4, "softswitch_onReceive / found edge, src=%x:%x:%x=%u", edge->source.thread, edge->source.device, edge->source.pin);
 
 
             assert(edge->source.pin==packet->source.pin);
@@ -137,7 +142,7 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
 
 
         // Call the application level handler
-        softswitch_softswitch_log(4, "softswitch_onReceive / begin application handler, packet=%p, size=%u", packet, packet->size);
+        softswitch_softswitch_log(4, "softswitch_onReceive / begin application handler, packet=%p, size=%u", packet, packet->source.size);
 
         // Needed for handler logging
         ctxt->currentDevice=deviceIndex;
@@ -166,9 +171,11 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message)
 
         softswitch_softswitch_log(4, "softswitch_onReceive / end application handler\n");
 
-        softswitch_softswitch_log(4, "softswitch_onReceive / updating RTS\n");
+        softswitch_softswitch_log(3, "softswitch_onReceive / updating RTS\n");
+        assert( ((dev->rtsFlags&0x7FFFFFFFul)!=0) == rts_is_on_list(ctxt, dev));
         softswitch_UpdateRTS(ctxt, dev);
-        softswitch_softswitch_log(4, "softswitch_onReceive / new rts=%x\n", dev->rtsFlags);
+        assert( ((dev->rtsFlags&0x7FFFFFFFul)!=0) == rts_is_on_list(ctxt, dev));
+        softswitch_softswitch_log(3, "softswitch_onReceive / new rts=%x\n", dev->rtsFlags);
 
         softswitch_softswitch_log(3, "softswitch_onReceive / end");
     } // am I external?

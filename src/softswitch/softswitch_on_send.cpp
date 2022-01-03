@@ -52,9 +52,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     assert(dev->rtsFlags);
     unsigned pinIndex=right_most_one(dev->rtsFlags);
 
-
-    softswitch_softswitch_log(4, "softswitch_onSend : device=%08x:%04x=%s, rtsFlags=%x, selected=%u", ctxt->threadId, dev->index,  dev->id, dev->rtsFlags, pinIndex);
-
+    softswitch_softswitch_log(3, "softswitch_onSend : device=%x:%x=%s, rtsFlags=%x, selected=%u", ctxt->threadId, dev->index,  dev->id, dev->rtsFlags, pinIndex);
 
     send_handler_t handler=vtable->outputPins[pinIndex].sendHandler;
 
@@ -71,7 +69,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     if(vtable->outputPins[pinIndex].isApp) {
       payload=(char*)(((hostMsg*)message)->payload);
     }else{
-      payload=(char*)((packet_t*)message+1);
+      payload=(char*)((packet_header_t*)message+1);
     }
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
@@ -82,7 +80,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
         ctxt->graphProps,
         dev->properties,
         dev->state,
-	payload
+	      payload
     );
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
@@ -95,6 +93,7 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
     softswitch_softswitch_log(4, "softswitch_onSend : application handler done, doSend=%d", doSend?1:0);
 
     uint32_t messageSize=vtable->outputPins[pinIndex].messageSize;
+    assert(messageSize >= sizeof(packet_header_t));
 
     if(doSend){
         if((vtable->outputPins[pinIndex].isApp)) { // it is an application pin we only have 1 target the host
@@ -104,31 +103,32 @@ extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint3
           ((hostMsg*)message)->source.thread=ctxt->threadId;
           ((hostMsg*)message)->source.device=dev->index;
           ((hostMsg*)message)->source.pin=pinIndex;
+          ((hostMsg*)message)->source.size=messageSize;
           ((hostMsg*)message)->type=vtable->outputPins[pinIndex].messageType_numid; // get the numerical id for messagetype
         } else { // Otherwise we need to lookup the targets in the DeviceContext
           softswitch_softswitch_log(3, "is not an application pin");
           *isApp=0; // it is not an application pin
           numTargets=dev->targets[pinIndex].numTargets;
           pTargets=dev->targets[pinIndex].targets;
-          ((packet_t*)message)->source.thread=ctxt->threadId;
-          ((packet_t*)message)->source.device=dev->index;
-          ((packet_t*)message)->source.pin=pinIndex;
-          ((packet_t*)message)->size=messageSize;
+          ((packet_header_t*)message)->source.thread=ctxt->threadId;
+          ((packet_header_t*)message)->source.device=dev->index;
+          ((packet_header_t*)message)->source.pin=pinIndex;
+          ((packet_header_t*)message)->source.size=messageSize;
         }
 
         softswitch_softswitch_log(4, "softswitch_onSend : source = %x:%x:%x", ctxt->threadId, dev->index, pinIndex);
     }
 
-    uint32_t payloadSize=messageSize - sizeof(packet_t);
+    uint32_t payloadSize=messageSize - sizeof(packet_header_t);
     for(uint32_t i=0; i<payloadSize; i++){
       softswitch_softswitch_log(5, "softswitch_onSend :   payload[%u] = %u", i, (uint8_t)payload[i]);
     }
 
     softswitch_softswitch_log(4, "softswitch_onSend : messageSize=%u, numTargets=%u, pTargets=%p", messageSize, numTargets, pTargets);
 
-    softswitch_softswitch_log(4, "softswitch_onSend : updating RTS");
+    softswitch_softswitch_log(3, "softswitch_onSend : updating RTS");
     dev->rtsFlags=0;    // Reflect that it is no longer on the RTC list due to the pop
-    dev->rtc=0;
+    assert(!rts_is_on_list(ctxt, dev));
     softswitch_UpdateRTS(ctxt, dev);
     softswitch_softswitch_log(4, "softswitch_onSend : rtsFlags=%x", dev->rtsFlags);
 

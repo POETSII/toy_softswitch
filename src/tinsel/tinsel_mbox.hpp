@@ -116,7 +116,7 @@ public:
         
         
 
-        append_printf(left, dst, "[%08x] HARD : ", m_myThreadId);
+        append_printf(left, dst, "[%u] HARD : ", m_myThreadId);
 
         va_list v;
         va_start(v,msg);

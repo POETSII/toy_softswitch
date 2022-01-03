@@ -28,6 +28,9 @@ extern "C" void softswitch_onReceive(PThreadContext *ctxt, const void *message);
 */
 extern "C" unsigned softswitch_onSend(PThreadContext *ctxt, void *message, uint32_t &numTargets, const address_t *&pTargets, uint8_t *isApp);
 
+//! Complete a hardware step
+extern "C" void softswitch_on_hardware_idle(PThreadContext *ctxt);
+
 extern "C" void *memset( void *dest, int ch, size_t count );
 
 //! functions used to manage the hostmessaging buffer
@@ -60,8 +63,10 @@ const int enableSendOverRecv=0;
 extern "C" void softswitch_main()
 {
     PThreadContext *ctxt=softswitch_getContext();
-    if(ctxt==0){
-      while(1);
+    if(ctxt==0 || ctxt->numDevices==0){
+      while(1){
+        tinsel_mboxIdle(false);
+      }
     }
 
     unsigned thisThreadId=tinsel_myId();
@@ -85,7 +90,7 @@ extern "C" void softswitch_main()
     uint32_t currSize=0;
     uint8_t isApp=0; // is 1 if we are sending on an application pin
 
-    softswitch_softswitch_log(1, "starting loop");
+    softswitch_softswitch_log(2, "start loop");
 
     #ifdef SOFTSWITCH_ENABLE_PROFILE
     ctxt->thread_cycles_tstart = tinsel_CycleCount();
@@ -96,7 +101,7 @@ extern "C" void softswitch_main()
 
     while(1) {
 
-        softswitch_softswitch_log(2, "Loop top");
+        softswitch_softswitch_log(3, "Loop top");
 
         // true if there is enough space in the host buffer to store the handlers
         // if this is false then draining the hostbuffer is a priority
@@ -117,7 +122,7 @@ extern "C" void softswitch_main()
         #ifdef SOFTSWITCH_ENABLE_PROFILE
         uint32_t idle_start = tinsel_CycleCount();
         #endif
-        while( (!tinsel_mboxCanRecv()) && (!wantToSend || !tinsel_mboxCanSend()) ){
+        if( (!tinsel_mboxCanRecv()) && (!wantToSend || !tinsel_mboxCanSend()) ){
             if(!softswitch_onIdle(ctxt)) {
                 #ifdef SOFTSWITCH_ENABLE_PROFILE
                 if(start_perfmon) {
@@ -139,25 +144,44 @@ extern "C" void softswitch_main()
                 }
                 start_perfmon = true;
                 #endif
-                break;
-	        }
+	        }else{
+            continue;
+          }
         }
 
         uint32_t wakeupFlags = wantToSend ? (tinsel_CAN_RECV|tinsel_CAN_SEND) : tinsel_CAN_RECV;
-        softswitch_softswitch_log(3, "waiting for send=%d, recv=%d", wakeupFlags&tinsel_CAN_SEND, (wakeupFlags&tinsel_CAN_RECV)?1:0);
-
-
+        softswitch_softswitch_log(4, "waiting for send=%d, recv=%d", wakeupFlags&tinsel_CAN_SEND, (wakeupFlags&tinsel_CAN_RECV)?1:0);
 
          #ifdef SOFTSWITCH_ENABLE_PROFILE
          uint32_t blocked_start = tinsel_CycleCount();
          #endif
+         #if SOFTSWITCH_ENABLE_HARDWARE_IDLE
+         bool doHardwareIdle=false;
+         if(!wantToSend){
+           for(unsigned i=0; i<ctxt->numDevices; i++){
+             assert(ctxt->devices[i].rtsFlags==0);
+           }
+            bool vote=false;
+            doHardwareIdle=tinsel_mboxIdle(vote);
+         }else{
+            tinsel_mboxWaitUntil( (tinsel_WakeupCond) (tinsel_CAN_RECV|tinsel_CAN_SEND) );
+         }
+         #else
          tinsel_mboxWaitUntil( (tinsel_WakeupCond) wakeupFlags );
+         #endif
          #ifdef SOFTSWITCH_ENABLE_PROFILE
          if(wantToSend) {
              ctxt->send_blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount());
          } else {
              ctxt->recv_blocked_cycles += deltaCycles(blocked_start, tinsel_CycleCount());
          }
+         #endif
+
+         #if SOFTSWITCH_ENABLE_HARDWARE_IDLE
+          if(doHardwareIdle){
+            softswitch_on_hardware_idle(ctxt);
+            continue;
+          }
          #endif
 
          bool doRecv=false;
@@ -203,7 +227,7 @@ extern "C" void softswitch_main()
 
          }
          if(doSend){
-             softswitch_softswitch_log(2, "send branch");
+             softswitch_softswitch_log(3, "send branch");
 
              assert(wantToSend); // Only come here if we have something to do
              assert(tinsel_mboxCanSend()); // Only reason we could have got here
@@ -223,23 +247,25 @@ extern "C" void softswitch_main()
                        // Prepare a new packet to send
                        currSize=softswitch_onSend(ctxt, (void*)sendBuffer, currSendTodo, currSendAddressList, &isApp);
                        ctxt->currentSize = currSize; // update the current size in the thread context
+
+                       
                    }else{
                        // We still have more addresses to deliver the last message to
                        softswitch_softswitch_log(3, "forwarding current message");
                    }
 
                    if(currSendTodo>0){
-                       assert(currSendAddressList);
+                       //assert(currSendAddressList);
 
-                       softswitch_softswitch_log(3, "sending to thread %08x, device %u, pin %u", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->pin);
+                       softswitch_softswitch_log(3, "sending to thread %x, device %u, pin %u", currSendAddressList->thread, currSendAddressList->device, currSendAddressList->pin);
 
                        // Update the target address (including the device and pin)
     	               static_assert(sizeof(address_t)==8);
                        if(isApp) { // we are sending an application message there is no destination
-                          //*(uint64_t*)&((packet_t*)sendBuffer)->dest = tinselHostId();
+                          //*(uint64_t*)&((packet_header_t*)sendBuffer)->dest = tinselHostId();
                        } else { // we are sending a regular message
     	                 // This wierdness is to avoid the compiler turning it into a call to memcpy
-                         *(uint64_t*)&((packet_t*)sendBuffer)->dest = *(uint64_t*)currSendAddressList;
+                         *(uint64_t*)&((packet_header_t*)sendBuffer)->dest = *(uint64_t*)currSendAddressList;
                        }
 
                        if(enableIntraThreadSend && currSendAddressList->thread==thisThreadId && adequateHostBufferSpace){

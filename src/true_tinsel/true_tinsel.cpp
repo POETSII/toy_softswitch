@@ -18,6 +18,13 @@ extern "C" void * memcpy ( void * destination, const void * source, size_t num )
   return destination;
 }
 
+extern "C" void tinsel_memcpy32 ( uint32_t *destination, const uint32_t *source, uint32_t num_words )
+{
+  for(unsigned i=0; i<num_words; i++){
+    destination[i] = source[i];
+  }
+}
+
 extern "C" void *memset( void *dest, int ch, size_t count )
 {
   uint8_t *pDst=(uint8_t*)dest;
@@ -800,4 +807,5 @@ extern "C" void softswitch_handler_export_key_value(uint32_t key, uint32_t value
 int main()
 {
   softswitch_main();
+  return 0;
 }
